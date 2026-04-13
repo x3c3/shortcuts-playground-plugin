@@ -78,22 +78,11 @@ python3 scripts/select_shortcut_icon_color.py --prompt "Build a weather shortcut
 
 ## Preflight Validation
 
-The skill uses a lightweight validation loop that runs a local validator and regenerates/fixes until the shortcut passes structural checks.
-The validator now uses bundled ToolKit v63 metadata (`data/toolkit-v63-tool-ids.json`) and augments it with markdown references; local ToolKit SQLite expansion is optional.
+The skill uses a lightweight validation loop that runs a local validator and regenerates/fixes until the shortcut passes structural checks. The validator uses the bundled action-ID allowlist (`data/toolkit-v63-tool-ids.json`) plus the markdown references in this directory.
 
-## Installed Batch Verification
+## Bundled action-ID snapshot
 
-For regression runs where shortcuts must be signed, imported, and validated from installed payloads:
-
-```bash
-python3 scripts/install_and_verify_shortcuts.py --dir "/path/to/random-mixed-actions-<runid>"
-```
-
-This script signs each `.shortcut`, imports via Shortcuts UI automation, verifies presence in `shortcuts list`, validates installed payloads from `~/Library/Shortcuts/Shortcuts.sqlite`, and writes `install_results.json` plus `install_summary.md`.
-
-## Bundled ToolKit Snapshot
-
-To make the skill portable for distribution, the ToolKit action-ID allowlist is prepackaged as `data/toolkit-v63-tool-ids.json`.
+To make the skill portable for distribution, the action-ID allowlist is prepackaged as `data/toolkit-v63-tool-ids.json`. The validator reads it directly — no extra setup on the user's machine.
 
 ## What's Included
 
@@ -113,7 +102,6 @@ To make the skill portable for distribution, the ToolKit action-ID allowlist is 
 | [`TOOLKIT_SNAPSHOT.md`](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit v63 metadata package and field coverage |
 | `scripts/select_shortcut_icon_color.py` | Natural-language icon/color resolver |
 | `scripts/validate_shortcut.py` | Preflight validator used by the validation loop |
-| `scripts/install_and_verify_shortcuts.py` | Batch sign/import/list/install-payload verification harness |
 | `data/shortcuts-official-glyph-mapping.json` | Official 507 glyph mapping |
 | `data/shortcuts-glyph-synonyms.json` | Synonym map for all 507 glyphs |
 | `data/shortcuts-icon-colors.json` | Shortcuts 15-color palette with aliases |

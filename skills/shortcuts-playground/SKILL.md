@@ -284,24 +284,6 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/shortcuts-playground/scripts/test_random_m
 
 Use this suite when you need randomized multi-action regression coverage beyond targeted wiring tests.
 
-### Installed App Verification (Recommended)
-
-When the task requires proof that shortcuts were actually installed and still validate from the Shortcuts library payloads, run:
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/shortcuts-playground/scripts/install_and_verify_shortcuts.py" --dir "/path/to/random-mixed-actions-<runid>"
-```
-
-Behavior:
-- Re-signs each `.shortcut` file (timeout + retry handling)
-- Imports each shortcut through Shortcuts.app UI automation
-- Verifies installed names via `shortcuts list`
-- Reads installed action payloads from `~/Library/Shortcuts/Shortcuts.sqlite`
-- Re-validates installed payloads with `validate-shortcut`
-- Writes `install_results.json` and `install_summary.md` in the batch folder
-
-Use this step for bugfix validation around variable wiring (Weather details, Location parameters, Set Name file wiring) where preflight-only checks are insufficient.
-
 ## Signing Shortcuts
 
 Shortcuts MUST be signed before they can be imported. The plugin ships a `sign-shortcut` wrapper that combines **archive + sign** into a single command and respects `${user_config.output_dir}`:
@@ -428,5 +410,5 @@ Prefer wording like `- Input uses the text output from the Text action above` an
 51. **Location parameter wiring**: Never emit empty location parameters. For `WFLocation`, `WFWeatherCustomLocation`, and `WFWeatherLocation`, use `WFTextTokenAttachment` (not token strings) and reference a Get Current Location/Location output (directly or via a variable sourced from those outputs). `is.workflow.actions.location` must include a non-empty `WFLocation` attachment; missing/blank payloads import as empty “Location” fields
 52. **Set Name best practice**: Use `is.workflow.actions.file.rename` with both `WFFile` and `WFNewFilename` (for example, `Test.txt`) so downstream actions receive a renamed file object
 53. **⚠️ WFMathOperation syntax (verified against Shortcuts app)**: For `is.workflow.actions.math`: (a) **Addition**: OMIT the `WFMathOperation` key entirely — no key means addition; (b) **Subtraction**: `-` (ASCII minus, U+002D); (c) **Multiplication**: `×` (U+00D7, ord 215, Unicode MULTIPLICATION SIGN) — NEVER `*`; (d) **Division**: `÷` (U+00F7, ord 247, Unicode DIVISION SIGN) — NEVER `/`; (e) **Scientific ops** (Modulus, Power, etc.): `WFMathOperation='…'` (U+2026 horizontal ellipsis) as placeholder, with real op in `WFScientificMathOperation` and operand in `WFScientificMathOperand`. **Literal operands** (`WFMathOperand`) must be plain strings like `"10"`, not wrapped dicts. Shortcuts silently renders ASCII `/` as `+` in the UI with no error. See PARAMETER_TYPES.md "Math and Counting Operations" for verified examples.
-54. **Verify installed shortcut behavior against Shortcuts.sqlite**: When a generated shortcut fails at runtime but the XML looks correct, read the INSTALLED version from `~/Library/Shortcuts/Shortcuts.sqlite` (table `ZSHORTCUTACTIONS`, column `ZDATA`, joined via `ZSHORTCUT.ZACTIONS`) and inspect each action's actual parameters. The installed bytes are ground truth; compare against your generated XML to find silent transformations (e.g., math operator substitutions)
+54. **Never inspect the user's local system for authoring discovery.** If an action identifier is allowlisted in `data/toolkit-v63-tool-ids.json` but its parameter schema is not documented in the bundled reference files (`ACTIONS.md`, `APPINTENTS.md`, `PARAMETER_TYPES.md`, `FILTERS.md`, `EXAMPLES.md`, `BEST_PRACTICES.md`, or the `golden-shortcuts/` library), **stop and ask the user** — do not try to reverse-engineer the schema by reading local databases, inspecting system binaries, querying Shortcuts.app internals, or searching cloud-backup folders. Escalate to the user with three options: (a) best-effort guess + iterate after they import, (b) use a simpler alternative action you propose, or (c) they paste a working example for you to mirror.
 55. **Bottom-align in Combine Images via the flip trick**: `is.workflow.actions.image.combine` in horizontal mode top-aligns images. To bottom-align without transparent canvas padding: (1) flip each input image upside-down before Combine, (2) run Combine (now "top" is the original bottom), (3) flip the combined result upside-down. ⚠️ **`is.workflow.actions.image.flip` behaves OPPOSITELY on iOS vs macOS — this is a genuine Apple bug across platforms**: on **iOS/iPadOS**, `WFImageFlipDirection='Vertical'` produces upside-down (direction-of-motion naming); on **macOS**, `WFImageFlipDirection='Horizontal'` produces upside-down (axis-of-reflection naming). The same plist value renders differently. **Workaround**: wrap the flip in an If block checking `Device Model is Mac` → Flip Horizontally / Otherwise → Flip Vertically. Do this for BOTH flips in the trick (per-image and combined result). Proven on Apple Frames 4 proportional scaling — worked on iOS but silently failed on macOS until the device check was added

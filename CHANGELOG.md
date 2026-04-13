@@ -2,6 +2,35 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.2.0] — 2026-04-13
+
+### Fixed (important behavior)
+- **Agent reconnaissance failure mode.** The `shortcut-builder` agent could go into unbounded exploration when an action identifier was allowlisted but lacked a documented parameter schema — it would query the user's local `~/Library/Shortcuts/Shortcuts.sqlite`, the ToolKit database, Google Drive backups, and system binaries looking for examples. Reproduced with the prompt *"Build a shortcut that gets my reminders due today and lets me select multiple ones to reschedule them"* against `is.workflow.actions.setters.reminders`. The agent now stops and escalates to the user with three clean options (best-effort guess, simpler alternative, user-provided example) and never touches local databases during authoring.
+
+### Removed
+- **All references to `Shortcuts.sqlite` / `ZSHORTCUTACTIONS` / ToolKit sqlite from user-facing skill docs.** Purged from `SKILL.md` (rule #54 rewritten), `PARAMETER_TYPES.md` (verification section replaced with character ordinal table), `BEST_PRACTICES.md` (batch install verification bullet), `TOOLKIT_SNAPSHOT.md` (rewritten), and the skill's internal `README.md` (installed-batch-verification section deleted).
+- **`scripts/install_and_verify_shortcuts.py`** — deleted. The script was only referenced from the now-removed docs.
+- **Optional local ToolKit sqlite expansion in `validate_shortcut.py`** — removed. The bundled `data/toolkit-v63-tool-ids.json` (1,794 identifiers) is now the only allowlist source, making the validator deterministic and sqlite-free.
+- **`import sqlite3`** — no longer present anywhere in the plugin's runtime code.
+
+### Added (agent system prompt)
+- **Hard rules against reconnaissance** in `agents/shortcut-builder.md`:
+  - Never inspect `~/Library/Shortcuts/Shortcuts.sqlite` for authoring discovery (post-runtime debugging use is also removed from the docs entirely).
+  - Never inspect `~/Library/Shortcuts/ToolKit/*.sqlite` or any ToolKit database.
+  - Never search `~/Library/CloudStorage`, `~/Library/Mobile Documents`, `/System/Applications/Shortcuts.app`, or `/Applications/Shortcuts.app` for template shortcuts.
+  - Never write inline Python that imports `sqlite3` or `objc`.
+  - When an allowlisted action has no documented parameter schema, **stop and ask the user** with three concrete options.
+- **Bounded research budget** — the agent may use up to 8 total Read/Grep/Glob calls before authoring or escalating. Prevents the unbounded-exploration failure mode even when no single rule fires.
+
+### Changed
+- **Rule #54 in `SKILL.md`** rewritten from "Verify installed shortcut behavior against Shortcuts.sqlite" to "Never inspect the user's local system for authoring discovery" — the old rule was the specific trigger that the agent was misapplying.
+- **`TOOLKIT_SNAPSHOT.md`** retitled and rewritten to remove the "to avoid extracting ToolKit sqlite" framing. The snapshot just exists; no sqlite backstory.
+
+### Verified
+- Self-test passes.
+- Hello World regression produces signed `.shortcut`.
+- Federico's exact failing reminders prompt now triggers the escalation path: the agent stops, presents three options, makes zero tool calls to Shortcuts.sqlite / ToolKit / Google Drive / system paths.
+
 ## [1.1.0] — 2026-04-13
 
 ### Added

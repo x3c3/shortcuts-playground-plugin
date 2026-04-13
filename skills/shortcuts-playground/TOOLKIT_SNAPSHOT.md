@@ -1,19 +1,15 @@
-# ToolKit Snapshot Package
+# Action ID Snapshot
 
-This skill bundles a precomputed ToolKit action-ID allowlist so it can be shared without requiring users to extract `~/Library/Shortcuts/ToolKit/*.sqlite` on their own machines.
+This skill bundles a precomputed action-ID allowlist so it can be shared without requiring any extra setup on the user's machine.
 
-## Bundled File
+## Bundled file
 
-- `data/toolkit-v63-tool-ids.json` — flat list of 1,794 action/intent identifiers used by the validator as the primary allowlist
+- `data/toolkit-v63-tool-ids.json` — flat list of 1,794 action/intent identifiers used by the validator as the primary allowlist.
 
-The full ToolKit metadata (tools, types, triggers) is not bundled — only the action IDs needed for validation are included. This keeps the skill lightweight (~98KB vs ~9.5MB).
+Only the identifiers needed for validation are bundled. This keeps the plugin lightweight (~98 KB vs. several megabytes for the full metadata set).
 
-## Validator Behavior
+## Validator behavior
 
-`scripts/validate_shortcut.py` uses `data/toolkit-v63-tool-ids.json` as the primary allowlist source, then augments with markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`) and optional local ToolKit SQLite reads.
+`scripts/validate_shortcut.py` uses `data/toolkit-v63-tool-ids.json` as the primary allowlist source, then augments it with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`).
 
-This keeps validation portable for distributed use while preserving optional local expansion when available.
-
-## Regenerating the Snapshot
-
-If ToolKit schema/content changes in a future OS release, re-extract `data/toolkit-v63-tool-ids.json` from the local ToolKit SQLite database and update the bundled file.
+This keeps validation portable and self-contained.

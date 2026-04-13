@@ -278,12 +278,11 @@ Example:
 
 ## Signing & Install Naming
 
-- **Duplicate shortcut names cause silent skips**: If a shortcut with the same name already exists in the library, importing via `open -a Shortcuts` or `shortcuts run` on the signed file will silently skip it. The `shortcuts` CLI does not have `import` or `delete` subcommands — use `scripts/install_and_verify_shortcuts.py` (which handles UI automation for import) or instruct the user to delete the old shortcut manually before importing.
+- **Duplicate shortcut names cause silent skips**: If a shortcut with the same name already exists in the user's library, importing via `open -a Shortcuts` or `shortcuts run` on the signed file will silently skip it. The `shortcuts` CLI does not have `import` or `delete` subcommands — instruct the user to delete the old shortcut manually before importing the new one.
 - Sign using a canonical filename that matches the intended shortcut name; do not append `_signed`.
 - If `shortcuts sign` says `The file doesn't exist` for an existing file, retry from a clean XML copy to a `.shortcut` path (for example, `cp source.xml /tmp/MyShortcut.shortcut`), then sign again.
 - `shortcuts` automation should rely only on supported subcommands: `run`, `list`, `view`, and `sign`.
 - During install verification, treat a `_signed` library name as failure and reinstall using a canonical filename.
-- For batch install validation, run `python3 scripts/install_and_verify_shortcuts.py --dir "<batch-folder>"` and require `Installed payloads valid (validator) == Total files` before declaring success.
 
 ## Numbers & Accumulators
 

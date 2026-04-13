@@ -663,36 +663,15 @@ mk('is.workflow.actions.math',
 
 Known `WFScientificMathOperation` values: `Modulus`, `Power`, `Square Root`, `Cube Root`, `Nth Root`, `Natural Logarithm`, `Common Logarithm`, `Logarithm`, `Exponent`, `Factorial`, `Sine`, `Cosine`, `Tangent`, `Arcsine`, `Arccosine`, `Arctangent`.
 
-### Verification
+### Character ordinals for math operations
 
-After signing a shortcut, extract the installed version from `~/Library/Shortcuts/Shortcuts.sqlite`:
-
-```python
-import sqlite3, plistlib, os
-db = os.path.expanduser("~/Library/Shortcuts/Shortcuts.sqlite")
-conn = sqlite3.connect(db)
-cursor = conn.cursor()
-cursor.execute("""
-    SELECT sa.ZDATA FROM ZSHORTCUTACTIONS sa
-    JOIN ZSHORTCUT s ON sa.Z_PK = s.ZACTIONS
-    WHERE s.ZNAME = ?
-""", ('My Shortcut',))
-actions = plistlib.loads(cursor.fetchone()[0])
-# actions is a list of action dicts — inspect each math action
-for i, a in enumerate(actions):
-    if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.math':
-        p = a['WFWorkflowActionParameters']
-        op = p.get('WFMathOperation', '<addition>')
-        print(f"#{i}: op={op!r} ord={[ord(c) for c in op] if op != '<addition>' else 'addition'}")
-```
-
-Expected character ordinals:
-- `ord('×')` = 215 ✓
-- `ord('÷')` = 247 ✓
-- `ord('-')` = 45 ✓
-- `ord('…')` = 8230 ✓ (scientific placeholder)
-- `ord('/')` = 47 ✗ (broken)
-- `ord('*')` = 42 ✗ (broken)
+The correct Unicode characters for math operations (verified):
+- `ord('×')` = 215 ✓ (multiplication — U+00D7)
+- `ord('÷')` = 247 ✓ (division — U+00F7)
+- `ord('-')` = 45 ✓ (ASCII minus — U+002D)
+- `ord('…')` = 8230 ✓ (scientific placeholder — U+2026)
+- `ord('/')` = 47 ✗ (ASCII slash — silently rendered as `+` by the Shortcuts app)
+- `ord('*')` = 42 ✗ (ASCII asterisk — not valid)
 
 ### WFCountType Values
 

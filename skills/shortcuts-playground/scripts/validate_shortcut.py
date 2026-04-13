@@ -15,7 +15,6 @@ import json
 import os
 import plistlib
 import re
-import sqlite3
 import sys
 from pathlib import Path
 from typing import Optional, Tuple
@@ -437,36 +436,6 @@ def load_allowed_ids(skill_dir: Path) -> set[str]:
         allowed |= parse_appintents_md(read_text(appintents_md))
     if third_party_md.exists():
         allowed |= parse_third_party_md(read_text(third_party_md))
-
-    # Optional local ToolKit database expansion to keep pace with installed actions.
-    toolkit_candidates: list[Path] = []
-    env_toolkit_dir = os.environ.get("SHORTCUTS_TOOLKIT_DIR")
-    if env_toolkit_dir:
-        toolkit_candidates.append(Path(env_toolkit_dir))
-    toolkit_candidates.extend(
-        [
-            Path.home() / "Shortcuts/ToolKit",
-            Path.cwd() / "Shortcuts/ToolKit",
-        ]
-    )
-    for toolkit_root in toolkit_candidates:
-        if not toolkit_root.exists():
-            continue
-        for db_path in sorted(toolkit_root.glob("*.sqlite")):
-            if db_path.name.endswith((".sqlite-wal", ".sqlite-shm")):
-                continue
-            try:
-                conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-                try:
-                    rows = conn.execute(
-                        "SELECT DISTINCT id FROM Tools WHERE id IS NOT NULL AND id != ''"
-                    )
-                    allowed |= {row[0] for row in rows if row and isinstance(row[0], str)}
-                finally:
-                    conn.close()
-            except sqlite3.Error:
-                # Keep validator deterministic even when the optional DB is unavailable.
-                continue
 
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
     return allowed
