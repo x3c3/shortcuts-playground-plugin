@@ -2,6 +2,39 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.3.0] — 2026-04-13
+
+### Fixed (factually wrong conditional documentation)
+
+The previous condition code documentation had multiple errors that propagated into both the validator and the agent's authoring instructions. Verified against an Apple-built sample shortcut covering every condition code and the multi-condition pattern. Specific corrections:
+
+- **Codes 0/1/3 had wrong UI labels.** Old docs said `0 = Equals`, `1 = Does Not Equal`, `3 = Is Less Than`. Ground truth: `0 = is less than`, `1 = is less than or equal to`, `3 = is greater than or equal to`. Code `2` was already correct (`is greater than`). There is no numeric "equals" code in the modern conditional action.
+- **The "implicit input for numeric conditions" rule was wrong.** Every conditional in the Apple sample — numeric, string, and existence — sets an explicit `WFInput` as a `Type=Variable` wrapper. The previous claim that codes 0–3 use implicit input and that "the validator has a gap" was the actual bug.
+- **Code `1003` (`is between`) was undocumented.** Now documented: requires both `WFNumberValue` (lower bound, literal) and `WFAnotherNumber` (upper bound, token attachment that can hold a literal or a variable).
+- **Multi-condition If (`Any are true` / `All are true`) was forbidden as "compound conditionals not supported".** Apple's modern Shortcuts uses them and so should generated shortcuts. Now fully documented in CONTROL_FLOW.md as the `WFConditions` + `WFContentPredicateTableTemplate` pattern with `WFActionParameterFilterPrefix` (`0` = Any, `1` = All) and `WFActionParameterFilterTemplates` array of per-row condition templates.
+
+### Validator changes (`scripts/validate_shortcut.py`)
+
+- `STRING_CONDITION_CODES` expanded from `{4, 99}` to `{4, 5, 8, 9, 99, 999}`.
+- `NUMBER_CONDITION_CODES` expanded from `{2}` to `{0, 1, 2, 3, 1003}`.
+- New `EXISTENCE_CONDITION_CODES = {100, 101}` — codes that take only `WFInput` and reject both `WFConditionalActionString` and `WFNumberValue`.
+- New `ALL_CONDITION_CODES` aggregate; the validator now rejects unknown codes outright.
+- `if not cond` truthiness check replaced with `if cond is None` (Python's `not 0` was treating valid code 0 as missing — the actual root cause behind the "validator gap" item that the old docs warned about).
+- Multi-condition Ifs (`WFConditions`) are now a recognized pattern instead of an error. The validator checks: (a) `WFSerializationType` must be `WFContentPredicateTableTemplate`, (b) `WFActionParameterFilterPrefix` must be `0` (Any) or `1` (All), (c) `WFActionParameterFilterTemplates` must be a non-empty list, (d) each template has its own `WFCondition` + `WFInput` + appropriate literal field, (e) the action does NOT also set top-level `WFCondition` / `WFInput` (mutually exclusive with `WFConditions`).
+- Per-code validation now enforces: code 1003 needs `WFAnotherNumber`; existence codes 100/101 must NOT set literal fields; all codes uniformly require explicit `WFInput` as a `Type=Variable` wrapper.
+
+### Documentation changes
+
+- **`skills/shortcuts-playground/CONTROL_FLOW.md`** — entire conditional section rewritten. New definitive code table (13 codes including 1003), uniform `WFInput` rule, `is between` template, full multi-condition If template with rules for each row inside `WFActionParameterFilterTemplates`. Anti-pattern list updated to flag mixing single-condition and multi-condition fields.
+- **`skills/shortcuts-playground/BEST_PRACTICES.md`** — conditional bullet rewritten with the corrected code table and the `Type=Variable` wrapper requirement. Removed the "implicit input" advice. The "Known Validator Gaps" section had its conditional entries removed; both the code-0 truthiness bug and the implicit-input gap were fixed in this release.
+- **`skills/shortcuts-playground/SKILL.md` rule #17** — replaced with the corrected uniform-input rule and pointer to CONTROL_FLOW.md.
+
+### Verified
+
+- The Apple sample (`Conditionals.xml`, 41 actions covering codes 0, 1, 2, 3, 4, 5, 8, 9, 99, 100, 101, 999, 1003, plus a multi-condition Any-of-three block) now validates with **zero conditional errors**. Remaining errors against the sample are convention-only (missing leading Comment blocks, unused `WFWorkflowInputContentItemClasses`) and correctly enforced for shortcuts the plugin generates.
+- `shortcuts-playground-selftest` still passes all six sub-checks.
+- Hello World regression still produces a signed `.shortcut`.
+
 ## [1.2.0] — 2026-04-13
 
 ### Fixed (important behavior)

@@ -47,6 +47,11 @@ ALLOW_EMPTY_STRING_KEYS = {
     "WFReplaceTextReplace",
 }
 
+# Verified against an Apple-built sample shortcut covering all condition codes.
+# All conditional codes use explicit WFInput as a Type=Variable wrapper. There
+# is no "implicit input" mode; the previously documented numeric-implicit pattern
+# was incorrect.
+
 STRING_CONDITIONS = {
     "Equals",
     "Does Not Equal",
@@ -56,20 +61,46 @@ STRING_CONDITIONS = {
     "Ends With",
 }
 
+# Codes whose WFCondition value requires a non-empty WFConditionalActionString
+# literal alongside the WFInput variable reference.
 STRING_CONDITION_CODES = {
-    4,
-    99,
+    4,    # is (string equals)
+    5,    # is not (string inequality)
+    8,    # begins with
+    9,    # ends with
+    99,   # contains
+    999,  # does not contain
 }
 
 NUMBER_CONDITIONS = {
+    "Is",
+    "Is Not",
     "Is Greater Than",
+    "Is Greater Than Or Equal To",
     "Is Less Than",
+    "Is Less Than Or Equal To",
     "Is Between",
 }
 
+# Codes whose WFCondition value requires WFNumberValue. Code 1003 also requires
+# WFAnotherNumber for the upper bound of a "between" check.
 NUMBER_CONDITION_CODES = {
-    2,
+    0,     # is less than
+    1,     # is less than or equal to
+    2,     # is greater than
+    3,     # is greater than or equal to
+    1003,  # is between (also requires WFAnotherNumber)
 }
+
+# Codes that test for variable existence and need NEITHER WFConditionalActionString
+# nor WFNumberValue. They still require WFInput.
+EXISTENCE_CONDITION_CODES = {
+    100,  # has any value
+    101,  # does not have any value
+}
+
+# All codes the validator recognizes. Anything outside this set is rejected.
+ALL_CONDITION_CODES = STRING_CONDITION_CODES | NUMBER_CONDITION_CODES | EXISTENCE_CONDITION_CODES
 
 REQUIRED_INPUT_ACTIONS = {
     # Actions that should always have explicit input wired
@@ -1371,66 +1402,159 @@ def validate(
                         errors.append(f"Todoist task update URL missing task ID placeholder at index {idx}")
                     break
 
-        # Conditional must be fully specified for mode 0 (start)
+        # Conditional must be fully specified for mode 0 (start). Verified against
+        # an Apple-built sample covering codes 0, 1, 2, 3, 4, 5, 8, 9, 99, 100, 101,
+        # 999, 1003, plus the multi-condition (Any/All are true) WFConditions pattern.
         if ident == "is.workflow.actions.conditional":
             mode = _coerce_control_flow_mode(params)
             if mode is None:
                 mode = 0
             if mode != 0:
                 continue
+
             cond = params.get("WFCondition")
             inp = params.get("WFInput")
             wfconds = params.get("WFConditions")
+
+            # Multi-condition pattern: WFConditions holds an array of templates,
+            # each template is its own (WFCondition + WFInput + literal). When
+            # this is set, the action does NOT have top-level WFCondition/WFInput.
             if wfconds is not None:
                 if not isinstance(wfconds, dict):
                     errors.append(f"Conditional WFConditions must be a dict at index {idx}")
                 else:
+                    serialization = wfconds.get("WFSerializationType")
+                    if serialization != "WFContentPredicateTableTemplate":
+                        errors.append(
+                            f"Conditional WFConditions WFSerializationType must be "
+                            f"WFContentPredicateTableTemplate at index {idx}"
+                        )
                     value = wfconds.get("Value")
                     templates = None
+                    prefix = None
                     if isinstance(value, dict):
                         templates = value.get("WFActionParameterFilterTemplates")
+                        prefix = value.get("WFActionParameterFilterPrefix")
                     if not templates:
-                        errors.append(f"Conditional WFConditions has empty filter templates at index {idx}")
-            if not cond or not inp:
-                if params.get("WFConditions") is not None:
+                        errors.append(
+                            f"Conditional WFConditions has empty filter templates at index {idx}"
+                        )
+                    elif not isinstance(templates, list):
+                        errors.append(
+                            f"Conditional WFConditions templates must be a list at index {idx}"
+                        )
+                    else:
+                        if prefix not in (0, 1):
+                            errors.append(
+                                f"Conditional WFConditions WFActionParameterFilterPrefix must be "
+                                f"0 (Any are true) or 1 (All are true) at index {idx}"
+                            )
+                        for tidx, template in enumerate(templates):
+                            if not isinstance(template, dict):
+                                errors.append(
+                                    f"Conditional template {tidx} is not a dict at index {idx}"
+                                )
+                                continue
+                            tcond = template.get("WFCondition")
+                            tinp = template.get("WFInput")
+                            if tcond is None or tinp is None:
+                                errors.append(
+                                    f"Conditional template {tidx} missing WFCondition or WFInput at index {idx}"
+                                )
+                                continue
+                            if not isinstance(tcond, int):
+                                errors.append(
+                                    f"Conditional template {tidx} WFCondition must be integer at index {idx}"
+                                )
+                                continue
+                            if tcond not in ALL_CONDITION_CODES:
+                                errors.append(
+                                    f"Conditional template {tidx} uses unknown WFCondition {tcond} at index {idx}"
+                                )
+                                continue
+                            if not _input_is_attached(tinp) or not _conditional_input_is_wrapped(tinp):
+                                errors.append(
+                                    f"Conditional template {tidx} WFInput must be a Type=Variable "
+                                    f"wrapper at index {idx}"
+                                )
+                            if tcond in STRING_CONDITION_CODES and not template.get("WFConditionalActionString"):
+                                errors.append(
+                                    f"Conditional template {tidx} (string code {tcond}) missing "
+                                    f"WFConditionalActionString at index {idx}"
+                                )
+                            if tcond in NUMBER_CONDITION_CODES and template.get("WFNumberValue") is None:
+                                errors.append(
+                                    f"Conditional template {tidx} (numeric code {tcond}) missing "
+                                    f"WFNumberValue at index {idx}"
+                                )
+                            if tcond == 1003 and template.get("WFAnotherNumber") is None:
+                                errors.append(
+                                    f"Conditional template {tidx} (between, code 1003) missing "
+                                    f"WFAnotherNumber upper bound at index {idx}"
+                                )
+                # Multi-condition is mutually exclusive with top-level WFCondition/WFInput.
+                if cond is not None or inp is not None:
                     errors.append(
-                        f"Conditional uses WFConditions without WFInput/WFCondition at index {idx}"
+                        f"Conditional has both WFConditions multi-condition block and "
+                        f"top-level WFCondition/WFInput at index {idx}; remove the top-level fields"
                     )
-                else:
-                    errors.append(f"Conditional missing WFInput/WFCondition at index {idx}")
-            elif not isinstance(cond, int):
+                continue
+
+            # Single-condition pattern: top-level WFCondition + WFInput + literal field.
+            # Use `is None` (not truthiness) — code 0 (less than) is a valid integer.
+            if cond is None or inp is None:
+                errors.append(f"Conditional missing WFInput/WFCondition at index {idx}")
+                continue
+            if not isinstance(cond, int):
                 errors.append(
                     f"Conditional WFCondition should use integer code for runtime stability at index {idx}"
                 )
-            elif not _input_is_attached(inp):
+                continue
+            if cond not in ALL_CONDITION_CODES:
+                errors.append(
+                    f"Conditional uses unknown WFCondition code {cond} at index {idx}; see CONTROL_FLOW.md"
+                )
+                continue
+            if not _input_is_attached(inp):
                 errors.append(f"Conditional WFInput is not a token attachment at index {idx}")
-            else:
-                is_wrapped = _conditional_input_is_wrapped(inp)
-                if cond in STRING_CONDITIONS or cond in STRING_CONDITION_CODES:
-                    if not is_wrapped:
-                        errors.append(
-                            f"Conditional WFInput should use Type=Variable wrapper for editor visibility at index {idx}"
-                        )
-                    if not params.get("WFConditionalActionString"):
-                        errors.append(f"Conditional missing WFConditionalActionString at index {idx}")
-                    else:
-                        var_name = _extract_input_variable_name(inp)
-                        for out_uuid in _input_action_output_uuids(inp):
-                            ident_inp = uuid_to_ident.get(out_uuid)
-                            if ident_inp == "is.workflow.actions.getvalueforkey":
-                                errors.append(
-                                    f"Conditional compares Dictionary Value directly at index {idx}; wrap in Text first"
-                                )
-                            if var_name is None and ident_inp in {
-                                "is.workflow.actions.gettext",
-                                "is.workflow.actions.getvalueforkey",
-                            }:
-                                errors.append(
-                                    f"String conditional should reference a named variable (Set Variable) at index {idx}"
-                                )
-                elif cond in NUMBER_CONDITIONS or cond in NUMBER_CONDITION_CODES:
-                    if params.get("WFNumberValue") is None:
-                        errors.append(f"Conditional missing WFNumberValue at index {idx}")
+                continue
+            is_wrapped = _conditional_input_is_wrapped(inp)
+            if not is_wrapped:
+                errors.append(
+                    f"Conditional WFInput must use Type=Variable wrapper for editor visibility at index {idx}"
+                )
+            # Per-code field requirements.
+            if cond in STRING_CONDITION_CODES:
+                if not params.get("WFConditionalActionString"):
+                    errors.append(
+                        f"Conditional (string code {cond}) missing WFConditionalActionString at index {idx}"
+                    )
+                else:
+                    for out_uuid in _input_action_output_uuids(inp):
+                        ident_inp = uuid_to_ident.get(out_uuid)
+                        if ident_inp == "is.workflow.actions.getvalueforkey":
+                            errors.append(
+                                f"Conditional compares Dictionary Value directly at index {idx}; wrap in Text first"
+                            )
+            elif cond in NUMBER_CONDITION_CODES:
+                if params.get("WFNumberValue") is None:
+                    errors.append(
+                        f"Conditional (numeric code {cond}) missing WFNumberValue at index {idx}"
+                    )
+                if cond == 1003 and params.get("WFAnotherNumber") is None:
+                    errors.append(
+                        f"Conditional (between, code 1003) missing WFAnotherNumber upper bound at index {idx}"
+                    )
+            elif cond in EXISTENCE_CONDITION_CODES:
+                # Existence checks (100/101) take no literal — only WFInput.
+                if params.get("WFConditionalActionString") is not None:
+                    errors.append(
+                        f"Conditional (existence code {cond}) must not set WFConditionalActionString at index {idx}"
+                    )
+                if params.get("WFNumberValue") is not None:
+                    errors.append(
+                        f"Conditional (existence code {cond}) must not set WFNumberValue at index {idx}"
+                    )
 
         # Choose from Menu start requires items
         if ident == "is.workflow.actions.choosefrommenu":

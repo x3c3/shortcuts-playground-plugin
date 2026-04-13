@@ -61,15 +61,18 @@ These guidelines are mandatory for every shortcut built with this skill. If guid
 - For **Extract Text from Image** (`is.workflow.actions.extracttextfromimage`), set exactly one non-empty image input key: prefer `WFImage` (fallback `WFInput` only when explicitly required by an existing pattern). Do not include an empty second image-input key.
 - For API error handling with **Get Dictionary Value**, avoid direct optional key paths such as `error.message` on raw responses; extract `error` first, guard with **If Has Any Value**, then read nested keys inside that branch.
 - Do not output placeholder actions with empty parameters. If a Text/Ask action would be blank, remove it or replace with a Comment. Omit `WFAskActionDefaultAnswer` entirely when there is no default.
-- **If block wiring depends on condition type** (CRITICAL — runtime-verified from golden examples):
-  - **Numeric conditions** (Is Greater Than, Is Less Than, Is Between): Use **implicit input** — do NOT set `WFInput`. Place the source action (e.g., Format Date, Count, Get Battery Level) immediately before the If. The previous action's output flows implicitly. Set only `WFCondition` (integer code) + `WFNumberValue`. **Known validator gap**: the validator requires explicit `WFInput` for all If blocks, but the runtime works correctly with implicit input for numeric conditions. The validator will report a false failure.
-  - **String/existence conditions** (Contains, Has Any Value, Equals with strings): Use **explicit `WFInput`** with the `Type=Variable` wrapper pattern. Named variables via Set Variable work reliably here.
-  - When a numeric If needs to reuse a value in the Otherwise branch (e.g., checking hour twice), re-compute the value (e.g., a second Format Date) in the Otherwise branch rather than trying to reference a named variable across the If boundary.
-- Avoid `WFConditions`/content-predicate tables for simple text equality. For text comparisons, always set `WFInput` + `WFCondition` and use a named-variable path so the editor shows a stable input chip.
-- For **If** inputs (when explicit `WFInput` is needed), always wrap in the editor-friendly structure: `WFInput = { Type: Variable, Variable: { Value: <token attachment>, WFSerializationType: WFTextTokenAttachment } }`.
-- For **If** actions, do not set `WFInput` to a bare `WFTextTokenAttachment`; that frequently imports as blank/empty on iOS.
-- For **If** actions, wrapping an **ActionOutput** is valid and often required for runtime stability.
-- Prefer integer `WFCondition` codes for conditionals (`100` for Has Any Value, `2` for Is Greater Than) instead of condition name strings.
+- **All conditional codes use the same `WFInput` wrapper** (verified against an Apple-built sample shortcut covering codes 0, 1, 2, 3, 4, 5, 8, 9, 99, 100, 101, 999, 1003 plus the multi-condition pattern):
+  - **Always set `WFInput` explicitly** as `{ Type: "Variable", Variable: { Value: <ActionOutput or Variable>, WFSerializationType: "WFTextTokenAttachment" } }`. This is the only valid input pattern. There is no "implicit input" mode — the older docs that told you numeric codes 0–3 use implicit input were incorrect, and the validator now rejects implicit input for every condition code.
+  - **Per-code literal field** (in addition to `WFInput`):
+    - String codes (`4`, `5`, `8`, `9`, `99`, `999`) → set `WFConditionalActionString` with the literal text to match.
+    - Numeric codes (`0`, `1`, `2`, `3`) → set `WFNumberValue` with the literal number as a string.
+    - Numeric "is between" code (`1003`) → set `WFNumberValue` (lower bound, literal string) AND `WFAnotherNumber` (upper bound, token attachment that can hold a literal or a variable reference).
+    - Existence codes (`100`, `101`) → set neither `WFConditionalActionString` nor `WFNumberValue` — only `WFInput`. The validator rejects extras.
+  - **Multi-condition If** (Any are true / All are true) uses `WFConditions` with `WFSerializationType = WFContentPredicateTableTemplate` instead of top-level `WFCondition` + `WFInput`. See CONTROL_FLOW.md "Multi-condition If" for the full template; `WFActionParameterFilterPrefix = 0` means Any (OR), `1` means All (AND). Each row inside `WFActionParameterFilterTemplates` carries its own `WFCondition`, `WFInput`, and per-code literal field. Do not mix the two patterns on the same If — the validator rejects an action that has both `WFConditions` and top-level `WFCondition`.
+  - **Otherwise / End If** (modes 1 and 2) carry only `GroupingIdentifier` + `WFControlFlowMode`; never set `WFInput` or `WFCondition` on them.
+- For **If** actions, do not set `WFInput` to a bare `WFTextTokenAttachment`; that imports as a blank input chip on iOS. Always use the `Type=Variable` wrapper, even when wrapping an `ActionOutput`.
+- For **If** actions, wrapping an **ActionOutput** directly inside the `Type=Variable` wrapper is valid and matches Apple's own serialization in the reference sample. Set Variable hops are NOT required.
+- Prefer integer `WFCondition` codes for conditionals (`100` for Has Any Value, `2` for Is Greater Than) instead of condition name strings; string names may import but degrade at runtime.
 - `is.workflow.actions.input` should not be emitted as a runtime action. Reference shortcut input via an `ExtensionInput` attachment instead.
 - For “Clipboard or Ask for Input” patterns, avoid numeric **Count → If**. Use a single **If** that checks whether the clipboard **has any value** (set `WFCondition` to integer `100` and point `WFInput` to the Clipboard variable).
 - Avoid generating **Unknown Action** blocks. AppIntent/action identifiers must exist in the bundled ToolKit snapshot (`data/toolkit-v63-tool-ids.json`) and references (`APPINTENTS.md`, `ACTIONS.md`); local ToolKit DB checks are optional and additive. Do not invent identifiers. If an action is unavailable on the target OS/version, replace it with a supported fallback and note it in a Comment.
@@ -177,25 +180,32 @@ After generating a shortcut, run the local validator and loop until it passes. T
 - For Set Dictionary Value, `WFDictionary` must be populated with the target dictionary variable.
 - For Set Variable, `WFInput` must be present and a token attachment (never leave it blank).
 - For Set Variable, if the source is a constant (string/number), use **Text**/**Number** then wire its output into `WFInput` (do not leave the Set Variable action unconnected).
-- **If condition codes require companion parameters (complete table from 127-shortcut analysis):**
+- **If condition codes (DEFINITIVE — verified against an Apple-built sample shortcut covering every code):**
 
-  | Code | Condition | Companion Parameter | Input Mode |
-  |------|-----------|-------------------|------------|
-  | 0 | Equals (number) | WFNumberValue | Implicit (no WFInput) |
-  | 1 | Does Not Equal (number) | WFNumberValue | Implicit |
-  | 2 | Is Greater Than | WFNumberValue | Implicit |
-  | 3 | Is Less Than | WFNumberValue | Implicit |
-  | 4 | Is (exact string match) | WFConditionalActionString | Explicit (WFInput required) |
-  | 5 | Is Not (string) | WFConditionalActionString | Explicit |
-  | 8 | Begins With | WFConditionalActionString | Explicit |
-  | 9 | Ends With | WFConditionalActionString | Explicit |
-  | 99 | Contains (substring) | WFConditionalActionString | Explicit |
-  | 100 | Has Any Value | (none needed) | Explicit |
-  | 101 | Does Not Have Any Value | (none needed) | Explicit |
-  | 999 | Does Not Contain | WFConditionalActionString | Explicit |
+  | Code | UI label | Category | Required extras (in addition to `WFInput`) |
+  |------|----------|----------|---------------------------------------------|
+  | `0`  | is less than | numeric | `WFNumberValue` |
+  | `1`  | is less than or equal to | numeric | `WFNumberValue` |
+  | `2`  | is greater than | numeric | `WFNumberValue` |
+  | `3`  | is greater than or equal to | numeric | `WFNumberValue` |
+  | `4`  | is (string equals) | string | `WFConditionalActionString` |
+  | `5`  | is not (string inequality) | string | `WFConditionalActionString` |
+  | `8`  | begins with | string | `WFConditionalActionString` |
+  | `9`  | ends with | string | `WFConditionalActionString` |
+  | `99` | contains (substring) | string | `WFConditionalActionString` |
+  | `100`| has any value | existence | (none) |
+  | `101`| does not have any value | existence | (none) |
+  | `999`| does not contain | string | `WFConditionalActionString` |
+  | `1003` | is between | numeric | `WFNumberValue` (lower) + `WFAnotherNumber` (upper, attachment) |
 
-  - **Implicit input** (codes 0–3): Do NOT set WFInput. Place source action immediately before the If. No intervening actions.
-  - **Explicit input** (codes 4, 5, 8, 9, 99, 100, 101, 999): Set `WFInput` with `Type=Variable` wrapper pattern.
+  **Common confusions to avoid:**
+  - Code `0` is `is less than` — there is no numeric "equals" code in the modern conditional. To compare two numbers for equality, either use code `4` (string equals) on text-coerced numbers, or build an Any-of-two block with `is greater than or equal to N` AND `is less than or equal to N`.
+  - Code `2` (`is greater than`) and code `3` (`is greater than or equal to`) differ by inclusivity — easy to swap.
+  - Code `4` (string equals) and code `99` (substring contains) are NOT interchangeable.
+
+  **`WFInput` is uniform across all codes.** Set it as `{ Type: "Variable", Variable: { Value: <ActionOutput or Variable>, WFSerializationType: "WFTextTokenAttachment" } }`. The previously documented "implicit input for numeric codes 0–3" rule was incorrect; verified against the Apple sample, every conditional including codes 0/1/2/3/1003 sets `WFInput` explicitly.
+
+  **Multi-condition Ifs** (Any are true / All are true) use `WFConditions` with `WFSerializationType = WFContentPredicateTableTemplate` and `WFActionParameterFilterTemplates` instead of top-level `WFCondition` + `WFInput`. See CONTROL_FLOW.md "Multi-condition If" for the full template. Mixing the two patterns on one action (both `WFConditions` AND top-level `WFCondition`) is a validator error.
 - For unit conversions, require `measurement.create` + `measurement.convert` unless a Comment includes `ALLOW_MANUAL_UNIT_CONVERSION`.
 
 **Command (must run):**
@@ -317,5 +327,5 @@ This shortcut was created via the following user prompt:
 The following patterns are structurally valid but trigger false failures in the validator. When the Craig Loop's only remaining errors match these items, the shortcut is acceptable:
 
 1. **Notes `markdownContents` key**: The validator's `NOTES_CONTENT_KEYS` set does not include `markdowncontents`. The runtime requires `markdownContents` (camelCase) — confirmed at runtime.
-2. **Condition code 0 (Equals) with implicit input**: The validator has a truthiness bug with integer 0 (Python treats `0` as falsy). Codes 1–3 work correctly; code 0 needs a validator fix.
-3. **Numeric If implicit input**: The validator requires explicit `WFInput` for all If blocks, but numeric conditions (codes 0–3) work correctly with implicit input at runtime.
+
+(The previously-listed "code 0 truthiness bug" and "numeric If implicit input" gaps were both fixed when the conditional system was rewritten against the Apple sample shortcut. The validator now correctly handles code 0 via `is None` checks and rejects implicit input for every condition code, matching the documented behavior.)
