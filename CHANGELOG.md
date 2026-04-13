@@ -2,6 +2,28 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.1.0] — 2026-04-13
+
+### Added
+- `bin/shortcuts-playground-selftest` — post-install smoke test that verifies Python 3.10+, the macOS `shortcuts` CLI, plugin root resolution, bundled data files, a validator pass on an embedded golden XML, and a full `sign-shortcut` archive + sign round trip to a temp dir. Exits with specific error messages on any failure. Supports `SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN=1` for CI environments without the `shortcuts` CLI.
+- `commands/build.md` — `/shortcuts-playground:build <brief>` slash command. Explicit entry point that delegates to the `shortcut-builder` agent with the brief as `$ARGUMENTS`. Complements natural-language auto-invocation.
+- `.claude-plugin/marketplace.json` — single-plugin marketplace manifest so the plugin directory can be added via `claude plugin marketplace add /path/to/shortcuts-playground-plugin`.
+
+### Changed
+- **README.md** — rewrote the Requirements section to clearly state the Python 3.10+ requirement (`/usr/bin/python3` on older macOS is 3.9.6 and will fail). Added a Health Check section that walks readers through post-install verification in four commands. Added a Configuration section documenting the three ways to set `userConfig` values: interactive `/plugin` TUI, manual `settings.json` edit under `pluginConfigs`, or direct `CLAUDE_PLUGIN_OPTION_*` env var override. Added a Development section explaining the directory-vs-git marketplace cache behavior (directory installs read from source; git installs read from cache and require `claude plugin update`). Added the slash command to the Usage section.
+- **Plugin version bumped from 1.0.0 → 1.1.0** (minor — additive features, no breaking changes).
+
+### Verified
+- Full test matrix on v1.1.0 (8 checks, all green):
+  - T1: `claude plugin validate` on plugin.json and marketplace.json.
+  - T2: `shortcuts-playground-selftest` from plugin root — all 6 sub-checks pass.
+  - T3: `shortcuts-playground-selftest` from `/tmp` without `CLAUDE_PLUGIN_ROOT` — fallback path resolution works.
+  - T4: negative self-test (`CLAUDE_PLUGIN_ROOT=/tmp/nonexistent`) exits 1 with 6 specific error messages.
+  - T5: `/shortcuts-playground:build` slash command via headless `claude -p` produces a signed `.shortcut`.
+  - T6: natural-language auto-invocation (no slash command) produces a signed `.shortcut`.
+  - T7: validator hook blocks a write with an unknown action identifier in headless mode.
+  - T8: re-validation of every archive XML produced in the matrix — all pass.
+
 ## [1.0.0] — 2026-04-13
 
 ### Added

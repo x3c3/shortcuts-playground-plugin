@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# shortcuts-playground: post-install self test.
+#
+# Verifies the plugin is wired up correctly:
+#   1. Python 3.10+ interpreter is available
+#   2. macOS `shortcuts` CLI is on PATH
+#   3. Plugin root resolves and contains expected files
+#   4. Bundled data files (ToolKit snapshot, glyph + color JSON) are present
+#   5. Validator passes on an embedded golden XML
+#   6. sign-shortcut round-trips to a temp dir and produces a signed .shortcut
+#
+# Exits 0 on full pass; non-zero on any failure, with specific error messages.
+# Any single check can be skipped by setting SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN=1
+# (useful for CI environments without the macOS `shortcuts` CLI).
+
+set -u
+
+EXIT_CODE=0
+FAILED=()
+
+pass() { printf '  \033[32m✔\033[0m %s\n' "$*"; }
+fail() { printf '  \033[31m✘\033[0m %s\n' "$*" >&2; EXIT_CODE=1; FAILED+=("$*"); }
+skip() { printf '  \033[33m⚠\033[0m %s\n' "$*"; }
+
+section() {
+  printf '\n\033[1m%s\033[0m\n' "$*"
+}
+
+printf '\033[1mShortcuts Playground — self test\033[0m\n'
+printf 'Validates that the installed plugin can validate, archive, and sign a golden shortcut.\n'
+
+# -----------------------------------------------------------------------------
+# 1. Python interpreter
+# -----------------------------------------------------------------------------
+section '1. Python 3.10+ interpreter'
+PY="${SHORTCUTS_PLAYGROUND_PYTHON:-python3}"
+if ! command -v "$PY" >/dev/null 2>&1; then
+  fail "python3 not on PATH (tried '$PY'). Install Python 3.10+ or set SHORTCUTS_PLAYGROUND_PYTHON to a 3.10+ interpreter."
+else
+  PY_PATH="$(command -v "$PY")"
+  PY_VERSION="$("$PY" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))' 2>/dev/null || echo unknown)"
+  if "$PY" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    pass "$PY_PATH (Python $PY_VERSION)"
+  else
+    fail "$PY_PATH is Python $PY_VERSION; plugin requires 3.10+ (validator uses PEP 604 union syntax)."
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 2. macOS shortcuts CLI
+# -----------------------------------------------------------------------------
+section '2. macOS shortcuts CLI'
+if command -v shortcuts >/dev/null 2>&1; then
+  SC_PATH="$(command -v shortcuts)"
+  pass "shortcuts CLI at $SC_PATH"
+else
+  if [ "${SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN:-0}" = "1" ]; then
+    skip "shortcuts CLI missing (SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN=1 set, continuing without sign test)"
+  else
+    fail "shortcuts CLI not found (this is a macOS-only binary; the plugin cannot sign shortcuts without it)."
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 3. Plugin root resolution
+# -----------------------------------------------------------------------------
+section '3. Plugin root resolution'
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+PLUGIN_ROOT_SRC="env CLAUDE_PLUGIN_ROOT"
+if [ -z "$PLUGIN_ROOT" ]; then
+  PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+  PLUGIN_ROOT_SRC="relative to \$0"
+fi
+if [ -f "$PLUGIN_ROOT/skills/shortcuts-playground/scripts/validate_shortcut.py" ]; then
+  pass "plugin root: $PLUGIN_ROOT ($PLUGIN_ROOT_SRC)"
+else
+  fail "plugin root is invalid: $PLUGIN_ROOT (missing skills/shortcuts-playground/scripts/validate_shortcut.py)"
+fi
+
+# -----------------------------------------------------------------------------
+# 4. Bundled data files
+# -----------------------------------------------------------------------------
+section '4. Bundled data files'
+DATA_DIR="$PLUGIN_ROOT/skills/shortcuts-playground/data"
+DATA_FILES=(
+  "toolkit-v63-tool-ids.json"
+  "shortcuts-official-glyph-mapping.json"
+  "shortcuts-icon-colors.json"
+  "shortcuts-glyph-synonyms.json"
+)
+for f in "${DATA_FILES[@]}"; do
+  if [ -f "$DATA_DIR/$f" ]; then
+    SIZE="$(wc -c < "$DATA_DIR/$f" | tr -d ' ')"
+    pass "$f ($SIZE bytes)"
+  else
+    fail "missing bundled data file: $DATA_DIR/$f"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# 5. Validator passes on an embedded golden XML
+# -----------------------------------------------------------------------------
+section '5. Validator on embedded golden XML'
+TMP_ROOT="$(mktemp -d -t shortcuts-playground-selftest.XXXXXX)"
+trap 'rm -rf "$TMP_ROOT"' EXIT
+
+GOLDEN="$TMP_ROOT/selftest-golden.xml"
+cat > "$GOLDEN" <<'GOLDEN_XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>WFWorkflowActions</key>
+    <array>
+        <dict>
+            <key>WFWorkflowActionIdentifier</key>
+            <string>is.workflow.actions.comment</string>
+            <key>WFWorkflowActionParameters</key>
+            <dict>
+                <key>WFCommentActionText</key>
+                <string>Shortcuts Playground Self Test
+
+This shortcut is generated and discarded by shortcuts-playground-selftest. If you are seeing it in Shortcuts.app, something is wrong with your self-test cleanup.</string>
+            </dict>
+        </dict>
+        <dict>
+            <key>WFWorkflowActionIdentifier</key>
+            <string>is.workflow.actions.comment</string>
+            <key>WFWorkflowActionParameters</key>
+            <dict>
+                <key>WFCommentActionText</key>
+                <string>Shortcuts generated by Shortcuts Playground. May contain mistakes. Always check the shortcut's actions first.</string>
+            </dict>
+        </dict>
+    </array>
+    <key>WFWorkflowClientVersion</key>
+    <string>2700.0.4</string>
+    <key>WFWorkflowHasOutputFallback</key>
+    <false/>
+    <key>WFWorkflowIcon</key>
+    <dict>
+        <key>WFWorkflowIconGlyphNumber</key>
+        <integer>61440</integer>
+        <key>WFWorkflowIconStartColor</key>
+        <integer>431817727</integer>
+    </dict>
+    <key>WFWorkflowImportQuestions</key>
+    <array/>
+    <key>WFWorkflowMinimumClientVersion</key>
+    <integer>900</integer>
+    <key>WFWorkflowMinimumClientVersionString</key>
+    <string>900</string>
+    <key>WFWorkflowName</key>
+    <string>Shortcuts Playground Self Test</string>
+    <key>WFWorkflowOutputContentItemClasses</key>
+    <array/>
+    <key>WFWorkflowTypes</key>
+    <array/>
+</dict>
+</plist>
+GOLDEN_XML
+
+if [ -z "${PLUGIN_ROOT:-}" ] || [ ! -f "$PLUGIN_ROOT/skills/shortcuts-playground/scripts/validate_shortcut.py" ]; then
+  skip "validator check skipped (plugin root invalid)"
+else
+  if VALIDATOR_OUT="$("$PY" "$PLUGIN_ROOT/skills/shortcuts-playground/scripts/validate_shortcut.py" "$GOLDEN" 2>&1)"; then
+    pass "validator returned pass on embedded golden"
+  else
+    fail "validator failed on embedded golden:"
+    printf '%s\n' "$VALIDATOR_OUT" | sed 's/^/      /' >&2
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 6. sign-shortcut round trip
+# -----------------------------------------------------------------------------
+section '6. sign-shortcut round trip'
+SIGN_WRAPPER="$PLUGIN_ROOT/bin/sign-shortcut"
+if [ ! -x "$SIGN_WRAPPER" ]; then
+  fail "sign-shortcut wrapper not found or not executable: $SIGN_WRAPPER"
+elif [ "${SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN:-0}" = "1" ]; then
+  skip "sign-shortcut test skipped (SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN=1)"
+elif ! command -v shortcuts >/dev/null 2>&1; then
+  skip "sign-shortcut test skipped (shortcuts CLI missing)"
+else
+  SIGN_NAME="Shortcuts Playground Self Test"
+  SIGN_OUT_DIR="$TMP_ROOT/signed"
+  if SIGN_OUTPUT="$("$SIGN_WRAPPER" "$GOLDEN" --name "$SIGN_NAME" --output-dir "$SIGN_OUT_DIR" 2>&1)"; then
+    SIGNED_PATH="$SIGN_OUT_DIR/${SIGN_NAME}.shortcut"
+    if [ -f "$SIGNED_PATH" ]; then
+      SIZE="$(wc -c < "$SIGNED_PATH" | tr -d ' ')"
+      # Verify the AEA1 Apple Encrypted Archive magic bytes are present.
+      MAGIC="$(head -c 4 "$SIGNED_PATH" | od -An -c | tr -d ' \n')"
+      if [ "$MAGIC" = "AEA1" ]; then
+        pass "signed .shortcut written ($SIZE bytes, AEA1 magic OK)"
+      else
+        fail "signed file exists but magic bytes are '$MAGIC' (expected 'AEA1')"
+      fi
+      # Confirm the archive XML was created alongside the signed file.
+      ARCHIVE_DIR="$SIGN_OUT_DIR/$(date +%F)"
+      if [ -d "$ARCHIVE_DIR" ] && ls "$ARCHIVE_DIR"/*.xml >/dev/null 2>&1; then
+        ARCHIVE_COUNT="$(ls "$ARCHIVE_DIR"/*.xml 2>/dev/null | wc -l | tr -d ' ')"
+        pass "archive XML written ($ARCHIVE_COUNT file in $ARCHIVE_DIR)"
+      else
+        fail "sign-shortcut succeeded but archive XML missing under $ARCHIVE_DIR"
+      fi
+    else
+      fail "sign-shortcut returned success but signed file missing: $SIGNED_PATH"
+      printf '%s\n' "$SIGN_OUTPUT" | sed 's/^/      /' >&2
+    fi
+  else
+    fail "sign-shortcut failed:"
+    printf '%s\n' "$SIGN_OUTPUT" | sed 's/^/      /' >&2
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------------
+printf '\n'
+if [ "$EXIT_CODE" -eq 0 ]; then
+  printf '\033[32m✔ All checks passed.\033[0m Plugin is ready to build shortcuts.\n'
+else
+  printf '\033[31m✘ Self test failed (%d failure%s):\033[0m\n' "${#FAILED[@]}" "$([ ${#FAILED[@]} -eq 1 ] || printf s)"
+  for f in "${FAILED[@]}"; do
+    printf '  - %s\n' "$f" >&2
+  done
+fi
+
+exit "$EXIT_CODE"
