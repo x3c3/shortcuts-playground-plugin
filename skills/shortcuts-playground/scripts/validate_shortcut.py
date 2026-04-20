@@ -183,7 +183,10 @@ FILE_ACTION_IDS = {
     "is.workflow.actions.documentpicker.save",
 }
 
-TOKEN_HINT_RE = re.compile(r"(api[\s_-]?key|token)", re.IGNORECASE)
+TOKEN_HINT_RE = re.compile(
+    r"\b(api[\s_-]?(?:key|token)|bearer[\s_-]?token|access[\s_-]?token|secret[\s_-]?(?:key|token)|auth[\s_-]?token)\b",
+    re.IGNORECASE,
+)
 LANG_CODE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]+)?$")
 IDENTIFIER_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 THIRD_PARTY_IDENTIFIER_RE = re.compile(r"^[a-z0-9]+(\.[A-Za-z0-9_-]+){2,}$")
@@ -360,6 +363,10 @@ UNIT_KEYWORD_IGNORED_KEYS = {
     "WFTimeFormatStyle",
     "WFRelativeDateFormatStyle",
     "WFMatchTextPattern",
+    # Key used inside WFDateFormatVariableAggrandizement payloads — matches
+    # the literal plist key, not the WF-prefixed parameter. Date format strings
+    # like "yyyy-MM-dd" contain "MM" which otherwise trips \bmm\b.
+    "DateFormat",
 }
 
 
@@ -388,7 +395,17 @@ def read_text(path: Path) -> str:
 
 
 def parse_actions_md(text: str) -> set[str]:
+    """Parse ACTIONS.md and return the set of valid action identifiers.
+
+    Only rows inside tables whose first column header is "Identifier" are
+    treated as action rows. Parameter/property tables (first column
+    "Parameter", "Property", "Class Name", etc.) are skipped so their
+    backticked cells do not pollute the allowlist — a prior version wrongly
+    injected entries like `is.workflow.actions.UUID` / `is.workflow.actions.Album`.
+    """
+
     actions: set[str] = set()
+    in_identifier_table = False
 
     def add_action_id(token: str):
         if not IDENTIFIER_TOKEN_RE.match(token):
@@ -400,11 +417,28 @@ def parse_actions_md(text: str) -> set[str]:
             return
         actions.add(f"is.workflow.actions.{token}")
 
+    header_re = re.compile(r"^\|\s*([^|`]+?)\s*\|")
+    separator_re = re.compile(r"^\|\s*[-:]+")
+    row_re = re.compile(r"\|\s*`([^`]+)`\s*\|")
+
     for line in text.splitlines():
-        # Table rows: | `identifier` | Class | Description |
-        m = re.match(r"\|\s*`([^`]+)`\s*\|", line)
-        if m:
-            add_action_id(m.group(1).strip())
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            in_identifier_table = False
+            continue
+        if separator_re.match(line):
+            continue
+        if stripped.startswith("|"):
+            # Heuristic: if the first column is plain text (no backticks) it's
+            # a header row. Switch mode based on whether header == "Identifier".
+            header_m = header_re.match(line)
+            backtick_m = row_re.match(line)
+            if header_m and not backtick_m:
+                col = header_m.group(1).strip().lower()
+                in_identifier_table = col == "identifier"
+                continue
+            if in_identifier_table and backtick_m:
+                add_action_id(backtick_m.group(1).strip())
     return actions
 
 

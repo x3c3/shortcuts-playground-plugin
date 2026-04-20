@@ -11,6 +11,26 @@ Complete catalog of all 1632 first-party AppIntent actions from macOS ToolKit v6
 | Invocation | Direct identifier in action | Direct identifier in `WFWorkflowActionIdentifier` (with AppIntentDescriptor) |
 | Scope | Core shortcut actions | System integrations, deep links, app extensions |
 
+## Platform Availability
+
+**The AppIntents listed below come from the macOS ToolKit v63 snapshot, but platform support is NOT uniform.** An AppIntent that appears in this catalog may be:
+
+- **Universal** — available on both iOS/iPadOS and macOS (most settings deep-links from apps that exist on both platforms).
+- **macOS-only** — system-preferences deep-links for panes that exist only in `System Settings.app` on the Mac.
+- **iOS-only** — deep-links that open destinations inside the iOS Shortcuts app, iOS Settings, or iOS-exclusive apps. These will silently fail or return errors at runtime on macOS even if the XML validates.
+
+**When a shortcut is intended to run on macOS, prefer the macOS-native equivalent or a universal Shortcuts action over a platform-specific AppIntent.** There is no compile-time check — the Shortcuts app accepts the plist on either platform and only reveals the mismatch at runtime.
+
+### Known iOS-only AppIntents (non-exhaustive)
+
+Do **not** use these when targeting macOS:
+
+| Identifier | Title | Notes |
+|------------|-------|-------|
+| `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings | iOS-only — the Shortcuts app has no "Settings" pane on macOS. Use `com.apple.systempreferences.*` for Mac system-settings deep-links instead. |
+
+If you hit a runtime failure on macOS for an intent that validated cleanly, assume platform mismatch first. Add the failing identifier to the table above (with a short note) so the next build avoids it.
+
 ## How to Invoke AppIntents
 
 AppIntents use their full identifier in `WFWorkflowActionIdentifier` and include an `AppIntentDescriptor`:
@@ -448,7 +468,7 @@ The AppIntents below exist in the allowlist for completeness (for actions like `
 | `com.apple.shortcuts.MoveShortcutToFolderAction` | Move Shortcut |
 | `com.apple.shortcuts.OpenAppIntent` | Open App |
 | `com.apple.shortcuts.OpenNavigationDestinationAction` | Open Folder |
-| `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings |
+| `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings *(iOS-only — see Platform Availability)* |
 | `com.apple.shortcuts.OpenWorkflowAction` | Open Shortcut |
 | `com.apple.shortcuts.RenameShortcutAction` | Rename Shortcut |
 | `com.apple.shortcuts.RunShortcutConfigurationIntent` | Shortcut |
@@ -908,7 +928,7 @@ Examples:
 | `com.apple.shortcuts.MoveShortcutToFolderAction` | Move Shortcut |
 | `com.apple.shortcuts.OpenAppIntent` | Open App |
 | `com.apple.shortcuts.OpenNavigationDestinationAction` | Open Folder |
-| `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings |
+| `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings *(iOS-only — see Platform Availability)* |
 | `com.apple.shortcuts.OpenWorkflowAction` | Open Shortcut |
 | `com.apple.shortcuts.RenameShortcutAction` | Rename Shortcut |
 | `com.apple.shortcuts.RunShortcutConfigurationIntent` | Shortcut |

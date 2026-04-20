@@ -2,6 +2,37 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.5.3] — 2026-04-20
+
+### Fixed — validator false positives surfaced by external audit
+
+Three independently-confirmed bugs in `skills/shortcuts-playground/scripts/validate_shortcut.py`. Each one has a behavioral test alongside the existing regression suite.
+
+- **Allowlist pollution in `parse_actions_md`.** The old regex grabbed every first-column backticked cell in `ACTIONS.md`, so parameter-table rows like `` | `UUID` | String | … `` and `` | `Album` | String | Album name `` were being auto-prefixed and injected as `is.workflow.actions.UUID` / `is.workflow.actions.Album`. That silently allowed bogus identifiers through the unknown-action check. Parser is now section-aware: it only consumes rows inside tables whose first-column header is literally `Identifier`. Header rows for `Parameter`, `Property`, `Class Name`, etc. switch parsing back off. Verified: the two polluted entries are gone, and every legitimate action identifier the old parser produced is still present (the canonical allowlist still comes from `data/toolkit-v63-tool-ids.json` — `parse_actions_md` is additive).
+
+- **`TOKEN_HINT_RE` too broad.** The old pattern `(api[\s_-]?key|token)` (case-insensitive, no word boundaries) matched the substring `token` inside benign filenames like `SP-043-tokenized.txt`, `tokenizer.csv`, or `brokentoken.json`, wrongly flagging any file-loading action referencing them as "API token loaded from file." Replaced with `\b(api[\s_-]?(key|token)|bearer[\s_-]?token|access[\s_-]?token|secret[\s_-]?(key|token)|auth[\s_-]?token)\b`. Verified with a 13-case truth table — all benign filenames pass, all real credential-shaped strings still match.
+
+- **Manual-unit-conversion false positive on date formats.** `UNIT_KEYWORD_IGNORED_KEYS` listed `WFDateFormat` and `WFDateFormatString`, but inside a `WFDateFormatVariableAggrandizement` payload the plist key is literally `DateFormat` — not the `WF`-prefixed parameter key. The case-insensitive `\bmm\b` pattern then matched `MM` inside custom format strings like `yyyy-MM-dd`, triggering the "use measurement.convert" error on perfectly valid date-formatting shortcuts. Added `DateFormat` to the ignore set with a short comment explaining why both forms are needed. Sanity-verified: real unit text like "42 miles" still triggers the check.
+
+### Improved — platform availability marked in `APPINTENTS.md`
+
+Added a "Platform Availability" section at the top of `skills/shortcuts-playground/APPINTENTS.md` explaining that the bundled AppIntents catalog does not uniformly mark iOS-only vs macOS vs universal intents, and that the Shortcuts app will accept a platform-mismatched plist at validation time only to fail at runtime. Seeded the section with the first confirmed iOS-only intent — `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` (Open Shortcuts Settings) — since the "Settings" pane only exists in the iOS Shortcuts app, not on macOS. Inline note in the two existing "Shortcuts (23 actions)" tables points readers back to the platform section. Table is expected to grow as more iOS-only intents surface during real-world use.
+
+### Unchanged since v1.5.2
+
+- Marketplace manifest layout, INSTALL.md, agent prompts, all `bin/` wrappers, hook behavior, and every other skill doc are unchanged. This release is scoped to the four items above.
+
+### Verified
+
+- **Self-test:** `bin/shortcuts-playground-selftest` — all checks pass (interpreter, `shortcuts` CLI, plugin root, bundled data files, embedded-golden validation, sign round-trip).
+- **Regression suite:** `scripts/test_wiring_regressions.py` — 92/92 (weather 40/40, location 40/40, set-name 12/12).
+- **Random mixed corpus:** `scripts/test_random_mixed_shortcuts.py` — 50/50 synthetic shortcuts pass with 18–21 distinct actions each.
+- **Targeted fix tests:** three ad-hoc fixtures exercising the specific failure paths — filename `SP-043-tokenized.txt` no longer trips the token-file check; a `DateFormat: "yyyy-MM-dd"` inside `WFDateFormatVariableAggrandizement` no longer trips the unit-conversion check; parameter-column identifiers like `UUID` and `Album` no longer appear in the parsed allowlist.
+
+### Deferred
+
+Four remaining items from the audit were intentionally deferred rather than patched blind, because each needs a concrete failing shortcut to avoid over-correcting. Tracked for a follow-up: (a) `documentpicker.save` with empty `WFFileDestinationPath`; (b) Adjust Date with `CurrentDate` token attachments flagged as empty; (c) SP-028 comment-scanner false positive; (d) import-schema drift across Open App, multi-condition If, Translate Text, Find Photos Album, and Get Weather Detail. Open a repro before touching any of these.
+
 ## [1.5.2] — 2026-04-14
 
 ### Added — internal release packaging for the MacStories team
