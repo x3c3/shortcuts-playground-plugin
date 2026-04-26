@@ -51,7 +51,7 @@ Confirm the install worked:
 claude plugin list | grep shortcuts-playground
 ```
 
-You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.5.2  ✔ enabled`.
+You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.7.0  ✔ enabled`.
 
 ## Verify it works (strongly recommended)
 
@@ -171,8 +171,10 @@ Your `~/Documents/Shortcuts Playground/` directory stays intact — the plugin n
 
 ## Release notes
 
-You're installing **v1.5.2**. The full CHANGELOG is in the repo. Big recent changes:
+You're installing **v1.7.0**. The full CHANGELOG is in the repo. Big recent changes:
 
+- **v1.7.0** — repository split into separate `claude/` and `codex/` plugin packages.
+- **v1.6.x** — HealthKit action support and sanitized bundled HealthKit XML evidence.
 - **v1.5.2** — internal release for MacStories team (marketplace manifest co-located with the plugin so one GitHub URL installs everything).
 - **v1.5.1** — uuidgen-only UUID generation + validator backstop rejecting repeating-hex placeholders.
 - **v1.5.0** — remix command + shortcut-remixer agent (`/shortcuts-playground:remix`).

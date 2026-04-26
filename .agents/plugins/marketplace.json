@@ -1,0 +1,20 @@
+{
+  "name": "shortcuts-playground-local",
+  "interface": {
+    "displayName": "Shortcuts Playground"
+  },
+  "plugins": [
+    {
+      "name": "shortcuts-playground",
+      "source": {
+        "source": "local",
+        "path": "./codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

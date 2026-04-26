@@ -2,6 +2,15 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.7.0] — 2026-04-26
+
+### Added — Codex package and dual-runtime repository layout
+
+- Moved the Claude Code plugin package into `claude/`.
+- Added a Codex plugin package in `codex/` with `.codex-plugin/plugin.json`, Codex skill metadata, direct script-based validation/signing, and converted PNG icon assets.
+- Updated the root Claude marketplace to install from `./claude`.
+- Added a root Codex marketplace at `.agents/plugins/marketplace.json` that points to `./codex`.
+
 ## [1.6.1] — 2026-04-26
 
 ### Fixed — remove personal local evidence details from distributed references
@@ -15,8 +24,8 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ### Added — HealthKit action support
 
-- Added HealthKit reference data generated from the local iPhoneOS 26.2 SDK and ActionKit Health unit constants.
-- Added `skills/shortcuts-playground/HEALTHKIT.md` with local iPhone export evidence for Find Health Samples, Get Details of Health Sample, Log Health Sample, and Log Workout.
+- Added HealthKit reference data generated from the iPhoneOS 26.2 SDK and ActionKit Health unit constants.
+- Added `skills/shortcuts-playground/HEALTHKIT.md` with bundled anonymized iOS XML examples for Find Health Samples, Get Details of Health Sample, Log Health Sample, and Log Workout.
 - Updated the validator and regression suite so HealthKit sample types, detail properties, category enum values, workout activity types, units, filters, dates, and variables are checked structurally.
 - Updated the plugin self-test to verify `healthkit-ios26.2-reference.json` is packaged.
 
