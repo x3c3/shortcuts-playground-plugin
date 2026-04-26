@@ -2,6 +2,20 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [Unreleased] — 2026-04-26
+
+### Added — HealthKit action support
+
+- Added HealthKit reference data generated from the local iPhoneOS 26.2 SDK and ActionKit Health unit constants.
+- Added `skills/shortcuts-playground/HEALTHKIT.md` with local iPhone export evidence for Find Health Samples, Get Details of Health Sample, Log Health Sample, and Log Workout.
+- Updated the validator and regression suite so HealthKit sample types, detail properties, category enum values, workout activity types, units, filters, dates, and variables are checked structurally.
+- Updated the plugin self-test to verify `healthkit-ios26.2-reference.json` is packaged.
+
+### Verified
+
+- `scripts/test_wiring_regressions.py` — HealthKit 527/527, location 40/40, set-name 12/12, weather 40/40.
+- `bin/shortcuts-playground-selftest` — all checks passed, including the new HealthKit data file.
+
 ## [1.5.3] — 2026-04-20
 
 ### Fixed — validator false positives surfaced by external audit

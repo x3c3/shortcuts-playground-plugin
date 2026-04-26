@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression suite for weather/location wiring and Set Name coverage.
+"""Regression suite for weather/location, Set Name, and HealthKit coverage.
 
 This script generates large synthetic shortcut corpora and runs them through
 validate_shortcut.py's validate() API.
@@ -8,11 +8,14 @@ It is designed to enforce:
 - Get Detail of Weather Conditions must have non-empty, correctly wired input.
 - Location-bearing parameters must never be emitted empty/unwired.
 - Set Name must include both file input and target filename.
+- HealthKit actions must validate exported iOS plist parameter shapes across
+  all SDK-known HealthKit type/value families.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import plistlib
 import uuid
 from dataclasses import dataclass
@@ -34,6 +37,7 @@ WEATHER_DETAILS = [
     "Wind Speed",
     "Visibility",
 ]
+HEALTH_SAMPLE_DETAILS = ["Type", "Value", "Unit", "Start Date", "End Date", "Duration", "Source", "Name"]
 
 
 @dataclass
@@ -134,6 +138,49 @@ def token_string_variable(name: str) -> dict:
             "attachmentsByRange": {"{0, 1}": {"Type": "Variable", "VariableName": name}},
         },
     }
+
+
+def current_date_attachment() -> dict:
+    return {
+        "WFSerializationType": "WFTextTokenAttachment",
+        "Value": {"Type": "CurrentDate"},
+    }
+
+
+def quantity_field(magnitude: object = "1", unit: str = "count") -> dict:
+    value = {"Unit": unit}
+    if magnitude is not None:
+        value["Magnitude"] = magnitude
+    return {"WFSerializationType": "WFQuantityFieldValue", "Value": value}
+
+
+def health_filter_template(operator: int = 1002, property_name: str = "Start Date") -> dict:
+    return {
+        "WFSerializationType": "WFContentPredicateTableTemplate",
+        "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFContentPredicateBoundedDate": False,
+            "WFActionParameterFilterTemplates": [
+                {
+                    "Operator": operator,
+                    "Property": property_name,
+                    "Removable": True,
+                    "Values": {},
+                }
+            ],
+        },
+    }
+
+
+def health_unit_hint(row: dict) -> str:
+    hint = str(row.get("unit_and_aggregation") or "").split(",", 1)[0].strip()
+    return hint or "count"
+
+
+def load_healthkit_reference() -> dict:
+    path = Path(__file__).resolve().parents[1] / "data/healthkit-ios26.2-reference.json"
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
 
 
 def make_weather_valid(case_name: str, idx: int) -> dict:
@@ -600,6 +647,347 @@ def make_set_name_invalid(case_name: str, idx: int) -> tuple[dict, str]:
     return root_plist(case_name, actions), expected
 
 
+def make_health_find_detail_valid(case_name: str, idx: int, health_type: str) -> dict:
+    prompt = f"HealthKit find/detail valid case {idx}"
+    actions = base_actions(case_name, prompt)
+    find_uuid = seeded_uuid(f"{case_name}-find-health")
+    detail_uuid = seeded_uuid(f"{case_name}-detail-health")
+    detail = HEALTH_SAMPLE_DETAILS[idx % len(HEALTH_SAMPLE_DETAILS)]
+
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+            "WFWorkflowActionParameters": {
+                "UUID": find_uuid,
+                "WFHealthQuantityType": health_type,
+                "WFContentItemFilter": health_filter_template(),
+                "WFContentItemLimitEnabled": False,
+            },
+        }
+    )
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+            "WFWorkflowActionParameters": {
+                "UUID": detail_uuid,
+                "WFContentItemPropertyName": detail,
+                "WFInput": attachment_action_output(find_uuid, "Health Samples"),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_find_detail_via_variable_valid(case_name: str, health_type: str) -> dict:
+    prompt = "HealthKit find/detail via named variable valid case"
+    actions = base_actions(case_name, prompt)
+    find_uuid = seeded_uuid(f"{case_name}-find-health")
+    detail_uuid = seeded_uuid(f"{case_name}-detail-health")
+    var_name = "Latest Health Samples"
+
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+            "WFWorkflowActionParameters": {
+                "UUID": find_uuid,
+                "WFHealthQuantityType": health_type,
+                "WFContentItemFilter": health_filter_template(),
+                "WFContentItemLimitEnabled": False,
+            },
+        }
+    )
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+            "WFWorkflowActionParameters": {
+                "WFVariableName": var_name,
+                "WFInput": attachment_action_output(find_uuid, "Health Samples"),
+            },
+        }
+    )
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+            "WFWorkflowActionParameters": {
+                "UUID": detail_uuid,
+                "WFContentItemPropertyName": "Value",
+                "WFInput": attachment_variable(var_name),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_log_quantity_valid(case_name: str, idx: int, health_type: str, unit: str) -> dict:
+    prompt = f"HealthKit log quantity valid case {idx}"
+    actions = base_actions(case_name, prompt)
+    params = {
+        "UUID": seeded_uuid(f"{case_name}-log-health"),
+        "WFQuantitySampleType": health_type,
+        "WFQuantitySampleQuantity": quantity_field("1", unit),
+        "WFQuantitySampleDate": current_date_attachment(),
+    }
+    if idx % 11 == 0:
+        params["WFQuantitySampleAdditionalQuantity"] = quantity_field(None, unit)
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+            "WFWorkflowActionParameters": params,
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_log_quantity_variable_valid(case_name: str) -> dict:
+    prompt = "HealthKit log quantity with variable magnitude valid case"
+    actions = base_actions(case_name, prompt)
+    number_uuid = seeded_uuid(f"{case_name}-number")
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.number",
+            "WFWorkflowActionParameters": {
+                "UUID": number_uuid,
+                "WFNumberActionNumber": "120",
+            },
+        }
+    )
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-log-health"),
+                "WFQuantitySampleType": "Caffeine",
+                "WFQuantitySampleQuantity": quantity_field(
+                    token_string_action_output(number_uuid, "Number"), "g"
+                ),
+                "WFQuantitySampleDate": current_date_attachment(),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_log_category_valid(case_name: str, idx: int, health_type: str, value: str) -> dict:
+    prompt = f"HealthKit log category valid case {idx}"
+    actions = base_actions(case_name, prompt)
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-log-health"),
+                "WFQuantitySampleType": health_type,
+                "WFCategorySampleEnumeration": value,
+                "WFQuantitySampleQuantity": quantity_field("10", "count"),
+                "WFQuantitySampleAdditionalQuantity": quantity_field(None, "count"),
+                "WFQuantitySampleDate": current_date_attachment(),
+                "WFSampleEndDate": current_date_attachment(),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_log_unit_valid(case_name: str, idx: int, unit: str) -> dict:
+    prompt = f"HealthKit ActionKit unit valid case {idx}"
+    actions = base_actions(case_name, prompt)
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-log-health"),
+                "WFQuantitySampleType": "Caffeine",
+                "WFQuantitySampleQuantity": quantity_field("10", unit),
+                "WFQuantitySampleAdditionalQuantity": quantity_field(None, unit),
+                "WFQuantitySampleDate": current_date_attachment(),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_workout_valid(case_name: str, idx: int, workout_type: str) -> dict:
+    prompt = f"HealthKit workout valid case {idx}"
+    actions = base_actions(case_name, prompt)
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.health.workout.log",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-log-workout"),
+                "WFWorkoutReadableActivityType": workout_type,
+                "WFWorkoutDate": current_date_attachment(),
+                "WFWorkoutDuration": quantity_field("30", "min"),
+                "WFWorkoutCaloriesQuantity": quantity_field("100", "kcal"),
+                "WFWorkoutDistanceQuantity": quantity_field("1000", "m"),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
+    prompt = f"HealthKit invalid case {idx}"
+    actions = base_actions(case_name, prompt)
+    pattern = idx % 12
+    expected = "Health"
+
+    if pattern == 0:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-find-health"),
+                    "WFContentItemFilter": health_filter_template(),
+                },
+            }
+        )
+        expected = "WFHealthQuantityType"
+    elif pattern == 1:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-find-health"),
+                    "WFHealthQuantityType": "Step Count",
+                },
+            }
+        )
+        expected = "WFContentItemFilter"
+    elif pattern == 2:
+        find_uuid = seeded_uuid(f"{case_name}-find-health")
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": find_uuid,
+                    "WFHealthQuantityType": "Step Count",
+                    "WFContentItemFilter": health_filter_template(),
+                    "WFContentItemLimitEnabled": False,
+                },
+            }
+        )
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-detail-health"),
+                    "WFInput": attachment_action_output(find_uuid, "Health Samples"),
+                },
+            }
+        )
+        expected = "WFContentItemPropertyName"
+    elif pattern == 3:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-detail-health"),
+                    "WFContentItemPropertyName": "Value",
+                    "WFInput": attachment_action_output(seeded_uuid(f"{case_name}-missing"), "Text"),
+                },
+            }
+        )
+        expected = "unknown OutputUUID"
+    elif pattern == 4:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-health"),
+                    "WFQuantitySampleQuantity": quantity_field("1", "g"),
+                },
+            }
+        )
+        expected = "WFQuantitySampleType"
+    elif pattern == 5:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-health"),
+                    "WFQuantitySampleType": "Caffeine",
+                    "WFQuantitySampleQuantity": quantity_field(None, "g"),
+                },
+            }
+        )
+        expected = "missing Magnitude"
+    elif pattern == 6:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-health"),
+                    "WFQuantitySampleType": "Caffeine",
+                    "WFQuantitySampleQuantity": {
+                        "WFSerializationType": "WFTextTokenString",
+                        "Value": {"string": "120", "attachmentsByRange": {}},
+                    },
+                },
+            }
+        )
+        expected = "WFQuantityFieldValue"
+    elif pattern == 7:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.workout.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-workout"),
+                    "WFWorkoutDuration": quantity_field("30", "min"),
+                },
+            }
+        )
+        expected = "WFWorkoutReadableActivityType"
+    elif pattern == 8:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.workout.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-workout"),
+                    "WFWorkoutReadableActivityType": "Running",
+                    "WFWorkoutDuration": quantity_field(None, "min"),
+                },
+            }
+        )
+        expected = "missing Magnitude"
+    elif pattern == 9:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-find-health"),
+                    "WFHealthQuantityType": "Not A Health Quantity",
+                    "WFContentItemFilter": health_filter_template(),
+                },
+            }
+        )
+        expected = "unknown WFHealthQuantityType"
+    elif pattern == 10:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-health"),
+                    "WFQuantitySampleType": "Caffeine",
+                    "WFQuantitySampleQuantity": quantity_field("1", "parsecs"),
+                },
+            }
+        )
+        expected = "unknown Unit"
+    else:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.health.workout.log",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-log-workout"),
+                    "WFWorkoutReadableActivityType": "Moonwalking",
+                    "WFWorkoutDuration": quantity_field("30", "min"),
+                },
+            }
+        )
+        expected = "unknown WFWorkoutReadableActivityType"
+
+    return root_plist(case_name, actions), expected
+
+
 def build_cases() -> list[Case]:
     cases: list[Case] = []
 
@@ -629,6 +1017,112 @@ def build_cases() -> list[Case]:
         case_name = f"ZZ-SetName-Invalid-{idx + 1:02d}"
         plist, expected = make_set_name_invalid(case_name, idx)
         cases.append(Case("set-name", case_name, plist, False, expected))
+
+    health = load_healthkit_reference()
+    quantity_types = health.get("quantity_types", [])
+    category_types = health.get("category_types", [])
+    category_values = health.get("category_values", {})
+    quantity_units = health.get("quantity_units", [])
+    workout_types = health.get("workout_activity_types", [])
+    enum_to_category_label: dict[str, str] = {}
+    for row in category_types:
+        enum_name = row.get("unit_and_aggregation")
+        label = row.get("shortcut_label_guess") or row.get("sdk_suffix")
+        if isinstance(enum_name, str) and isinstance(label, str) and enum_name.startswith("HKCategoryValue"):
+            enum_to_category_label.setdefault(enum_name, label)
+    # SDK comments and enum names are not always one-to-one; these aliases keep
+    # enum value coverage tied to known Shortcuts category type labels.
+    enum_to_category_label.setdefault("HKCategoryValueAudioExposureEvent", "Environmental Audio Exposure Event")
+    enum_to_category_label.setdefault("HKCategoryValueMenstrualFlow", "Menstrual Flow")
+
+    # Find Health Samples + Get Details: all SDK-known quantity types.
+    for idx, row in enumerate(quantity_types):
+        label = row.get("shortcut_label_guess") or row.get("sdk_suffix") or f"Quantity {idx}"
+        case_name = f"ZZ-Health-Find-Detail-Valid-{idx + 1:03d}"
+        cases.append(Case("healthkit", case_name, make_health_find_detail_valid(case_name, idx, label), True))
+
+    if quantity_types:
+        case_name = "ZZ-Health-Find-Detail-Variable-Valid"
+        label = quantity_types[0].get("shortcut_label_guess") or "Step Count"
+        cases.append(
+            Case(
+                "healthkit",
+                case_name,
+                make_health_find_detail_via_variable_valid(case_name, label),
+                True,
+            )
+        )
+
+    # Log Health Sample quantities: every SDK-known quantity type, with each
+    # type's unit hint from HealthKit headers.
+    for idx, row in enumerate(quantity_types):
+        label = row.get("shortcut_label_guess") or row.get("sdk_suffix") or f"Quantity {idx}"
+        case_name = f"ZZ-Health-Log-Quantity-Valid-{idx + 1:03d}"
+        cases.append(
+            Case(
+                "healthkit",
+                case_name,
+                make_health_log_quantity_valid(case_name, idx, label, health_unit_hint(row)),
+                True,
+            )
+        )
+
+    case_name = "ZZ-Health-Log-Quantity-Variable-Valid"
+    cases.append(Case("healthkit", case_name, make_health_log_quantity_variable_valid(case_name), True))
+
+    # Log Health Sample units: every unit string exposed by ActionKit's local
+    # WFHealthKitConstants.plist.
+    for idx, row in enumerate(quantity_units):
+        unit = row.get("unit") or f"unit-{idx}"
+        case_name = f"ZZ-Health-Log-Unit-Valid-{idx + 1:03d}"
+        cases.append(
+            Case(
+                "healthkit",
+                case_name,
+                make_health_log_unit_valid(case_name, idx, unit),
+                True,
+            )
+        )
+
+    # Log Health Sample categories: every SDK-known category type, plus every
+    # explicit category value enum exposed by HealthKit. Current iOS exports
+    # category values with WFCategorySampleEnumeration plus the same count-based
+    # quantity scaffold that quantity logs use.
+    for idx, row in enumerate(category_types):
+        label = row.get("shortcut_label_guess") or row.get("sdk_suffix") or f"Category {idx}"
+        case_name = f"ZZ-Health-Log-Category-Valid-{idx + 1:03d}"
+        cases.append(
+            Case("healthkit", case_name, make_health_log_category_valid(case_name, idx, label, "Present"), True)
+        )
+
+    enum_idx = 0
+    for enum_name in sorted(category_values):
+        for value_row in category_values.get(enum_name, []):
+            label = enum_to_category_label.get(enum_name)
+            if not label:
+                label = category_types[0].get("shortcut_label_guess") if category_types else "Bloating"
+            value = value_row.get("shortcut_label_guess") or value_row.get("symbol") or "Present"
+            case_name = f"ZZ-Health-Log-Category-Value-Valid-{enum_idx + 1:03d}"
+            cases.append(
+                Case(
+                    "healthkit",
+                    case_name,
+                    make_health_log_category_valid(case_name, enum_idx, label, value),
+                    True,
+                )
+            )
+            enum_idx += 1
+
+    # Log Workout: every SDK-known workout activity type.
+    for idx, row in enumerate(workout_types):
+        label = row.get("shortcut_label_guess") or row.get("symbol") or f"Workout {idx}"
+        case_name = f"ZZ-Health-Workout-Valid-{idx + 1:03d}"
+        cases.append(Case("healthkit", case_name, make_health_workout_valid(case_name, idx, label), True))
+
+    for idx in range(24):
+        case_name = f"ZZ-Health-Invalid-{idx + 1:02d}"
+        plist, expected = make_health_invalid(case_name, idx)
+        cases.append(Case("healthkit", case_name, plist, False, expected))
 
     return cases
 

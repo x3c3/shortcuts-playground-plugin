@@ -109,6 +109,45 @@ The `is today` operator (1002) does NOT require Values:
 </dict>
 ```
 
+### Find Health Samples "Start Date Is Today" Filter
+
+Verified from Federico's local iPhone export (`HealthSnap.xml`). **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, with Health sample fields such as `Start Date`.
+
+```xml
+<key>WFContentItemFilter</key>
+<dict>
+    <key>Value</key>
+    <dict>
+        <key>WFActionParameterFilterPrefix</key>
+        <integer>1</integer>
+        <key>WFContentPredicateBoundedDate</key>
+        <false/>
+        <key>WFActionParameterFilterTemplates</key>
+        <array>
+            <dict>
+                <key>Operator</key>
+                <integer>1002</integer>
+                <key>Property</key>
+                <string>Start Date</string>
+                <key>Removable</key>
+                <true/>
+                <key>Values</key>
+                <dict/>
+            </dict>
+        </array>
+    </dict>
+    <key>WFSerializationType</key>
+    <string>WFContentPredicateTableTemplate</string>
+</dict>
+```
+
+Pair it with an explicit sample type:
+
+```xml
+<key>WFHealthQuantityType</key>
+<string>Caffeine</string>
+```
+
 ### "Is in the Last X" Date Filter
 
 The `is in the last` operator (1001) requires Number and Unit:

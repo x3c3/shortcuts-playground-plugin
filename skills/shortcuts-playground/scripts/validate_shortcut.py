@@ -298,6 +298,115 @@ UNUSED_OUTPUT_ACTIONS = {
     "is.workflow.actions.math",
 }
 
+HEALTH_FIND_SAMPLES_ACTION = "is.workflow.actions.filter.health.quantity"
+HEALTH_LOG_SAMPLE_ACTION = "is.workflow.actions.health.quantity.log"
+HEALTH_LOG_WORKOUT_ACTION = "is.workflow.actions.health.workout.log"
+HEALTH_SAMPLE_DETAIL_ACTION = "is.workflow.actions.properties.health.quantity"
+
+HEALTH_IOS_ONLY_ACTIONS = {
+    HEALTH_FIND_SAMPLES_ACTION,
+    HEALTH_LOG_SAMPLE_ACTION,
+    HEALTH_LOG_WORKOUT_ACTION,
+    HEALTH_SAMPLE_DETAIL_ACTION,
+}
+
+HEALTH_SAMPLE_SOURCE_ACTIONS = {
+    HEALTH_FIND_SAMPLES_ACTION,
+    HEALTH_LOG_SAMPLE_ACTION,
+}
+
+HEALTH_SAMPLE_DETAIL_PROPERTIES = {
+    "Type",
+    "Value",
+    "Unit",
+    "Start Date",
+    "End Date",
+    "Duration",
+    "Source",
+    "Name",
+}
+
+HEALTH_QUANTITY_FIELD_KEYS = {
+    "WFQuantitySampleQuantity",
+    "WFQuantitySampleAdditionalQuantity",
+    "WFWorkoutDuration",
+    "WFWorkoutCaloriesQuantity",
+    "WFWorkoutDistanceQuantity",
+}
+
+HEALTH_REQUIRED_MAIN_QUANTITY_KEYS = {
+    "WFQuantitySampleQuantity",
+    "WFWorkoutDuration",
+    "WFWorkoutCaloriesQuantity",
+    "WFWorkoutDistanceQuantity",
+}
+
+
+def _load_healthkit_reference_sets() -> dict[str, set[str]]:
+    out = {
+        "quantity_types": set(),
+        "sample_types": set(),
+        "category_values": set(),
+        "workouts": set(),
+        "units": set(),
+    }
+    ref_path = Path(__file__).resolve().parents[1] / "data/healthkit-ios26.2-reference.json"
+    if not ref_path.exists():
+        return out
+    try:
+        payload = json.loads(ref_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return out
+
+    def labels_from_rows(rows) -> set[str]:
+        labels: set[str] = set()
+        if not isinstance(rows, list):
+            return labels
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("shortcut_label_guess", "sdk_suffix"):
+                value = row.get(key)
+                if isinstance(value, str) and value:
+                    labels.add(value)
+            observed = row.get("observed_shortcuts_labels")
+            if isinstance(observed, list):
+                labels.update(item for item in observed if isinstance(item, str) and item)
+        return labels
+
+    quantity_labels = labels_from_rows(payload.get("quantity_types"))
+    category_labels = labels_from_rows(payload.get("category_types"))
+    out["quantity_types"].update(quantity_labels)
+    out["sample_types"].update(quantity_labels | category_labels)
+    out["workouts"].update(labels_from_rows(payload.get("workout_activity_types")))
+
+    category_values = payload.get("category_values")
+    if isinstance(category_values, dict):
+        for rows in category_values.values():
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                for key in ("shortcut_label_guess", "symbol"):
+                    value = row.get(key)
+                    if isinstance(value, str) and value:
+                        out["category_values"].add(value)
+
+    for row in payload.get("quantity_units", []):
+        if isinstance(row, dict):
+            unit = row.get("unit")
+            if isinstance(unit, str) and unit:
+                out["units"].add(unit)
+    for unit in payload.get("quantity_unit_hints", []):
+        if isinstance(unit, str) and unit:
+            out["units"].add(unit)
+
+    return out
+
+
+HEALTH_REFERENCE_SETS = _load_healthkit_reference_sets()
+
 BUILTIN_VARIABLES = {
     "Repeat Item",
     "Repeat Item 2",
@@ -367,6 +476,9 @@ UNIT_KEYWORD_IGNORED_KEYS = {
     # the literal plist key, not the WF-prefixed parameter. Date format strings
     # like "yyyy-MM-dd" contain "MM" which otherwise trips \bmm\b.
     "DateFormat",
+    # Unit values inside WFQuantityFieldValue are structured metadata, not
+    # evidence of a manual unit conversion.
+    "Unit",
 }
 
 
@@ -497,6 +609,7 @@ def load_packaged_toolkit_ids(skill_dir: Path) -> set[str]:
                 if isinstance(item, str) and item:
                     allowed.add(item)
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
+    allowed |= HEALTH_IOS_ONLY_ACTIONS
     return allowed
 
 
@@ -517,6 +630,7 @@ def load_allowed_ids(skill_dir: Path) -> set[str]:
         allowed |= parse_third_party_md(read_text(third_party_md))
 
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
+    allowed |= HEALTH_IOS_ONLY_ACTIONS
     return allowed
 
 
@@ -794,10 +908,87 @@ def _token_param_is_empty(value) -> bool:
         inner = value.get("Value")
         if not isinstance(inner, dict):
             return True
-        if inner.get("Type") in {"ActionOutput", "Variable", "ExtensionInput"}:
+        token_type = inner.get("Type")
+        if isinstance(token_type, str) and token_type.strip():
             return False
         return True
     return False
+
+
+def _validate_health_quantity_field(
+    value,
+    *,
+    key: str,
+    idx: int,
+    errors: list[str],
+    require_magnitude: bool = True,
+) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"Health quantity field {key} must be a dict at index {idx}")
+        return
+    if value.get("WFSerializationType") != "WFQuantityFieldValue":
+        errors.append(
+            f"Health quantity field {key} must use WFQuantityFieldValue serialization at index {idx}"
+        )
+        return
+    inner = value.get("Value")
+    if not isinstance(inner, dict):
+        errors.append(f"Health quantity field {key} missing Value dict at index {idx}")
+        return
+
+    magnitude = inner.get("Magnitude")
+    unit = inner.get("Unit")
+    if require_magnitude and _token_param_is_empty(magnitude):
+        errors.append(f"Health quantity field {key} missing Magnitude at index {idx}")
+    if not isinstance(unit, str) or unit.strip() == "":
+        errors.append(f"Health quantity field {key} missing Unit at index {idx}")
+    elif HEALTH_REFERENCE_SETS["units"] and unit not in HEALTH_REFERENCE_SETS["units"]:
+        errors.append(f"Health quantity field {key} uses unknown Unit '{unit}' at index {idx}")
+
+
+def _validate_health_date_like(value, *, key: str, idx: int, errors: list[str]) -> None:
+    if _token_param_is_empty(value):
+        errors.append(f"Health date field {key} is empty at index {idx}")
+
+
+def _validate_health_filter_template(
+    filter_value,
+    *,
+    action_label: str,
+    idx: int,
+    errors: list[str],
+) -> None:
+    if not isinstance(filter_value, dict):
+        errors.append(f"{action_label} missing WFContentItemFilter at index {idx}")
+        return
+    if filter_value.get("WFSerializationType") != "WFContentPredicateTableTemplate":
+        errors.append(
+            f"{action_label} WFContentItemFilter must use WFContentPredicateTableTemplate at index {idx}"
+        )
+        return
+    inner = filter_value.get("Value")
+    if not isinstance(inner, dict):
+        errors.append(f"{action_label} WFContentItemFilter missing Value dict at index {idx}")
+        return
+    prefix = inner.get("WFActionParameterFilterPrefix")
+    if prefix not in (0, 1):
+        errors.append(
+            f"{action_label} WFContentItemFilter prefix must be 0 (Any) or 1 (All) at index {idx}"
+        )
+    templates = inner.get("WFActionParameterFilterTemplates")
+    if not isinstance(templates, list) or not templates:
+        errors.append(f"{action_label} WFContentItemFilter has no templates at index {idx}")
+        return
+    for tidx, template in enumerate(templates):
+        if not isinstance(template, dict):
+            errors.append(f"{action_label} filter template {tidx} is not a dict at index {idx}")
+            continue
+        if _token_param_is_empty(template.get("Property")):
+            errors.append(f"{action_label} filter template {tidx} missing Property at index {idx}")
+        if "Operator" not in template:
+            errors.append(f"{action_label} filter template {tidx} missing Operator at index {idx}")
+        if "Values" in template and not isinstance(template.get("Values"), dict):
+            errors.append(f"{action_label} filter template {tidx} Values must be a dict at index {idx}")
 
 
 def _lang_value_is_code(value) -> bool:
@@ -949,6 +1140,7 @@ def validate(
     has_measurement_convert = False
     weather_source_vars: set[str] = set()
     location_source_vars: set[str] = set()
+    health_sample_source_vars: set[str] = set()
 
     for idx, act in enumerate(actions):
         ident = act.get("WFWorkflowActionIdentifier")
@@ -1318,6 +1510,9 @@ def validate(
                 source_var_name = _extract_input_variable_name(wfinput)
                 weather_source = bool(source_var_name and source_var_name in weather_source_vars)
                 location_source = bool(source_var_name and source_var_name in location_source_vars)
+                health_sample_source = bool(
+                    source_var_name and source_var_name in health_sample_source_vars
+                )
                 for source_uuid in out_uuids:
                     source_ident = uuid_to_ident.get(source_uuid)
                     if source_ident == "is.workflow.actions.format.date":
@@ -1326,10 +1521,14 @@ def validate(
                         weather_source = True
                     if source_ident in LOCATION_SOURCE_ACTIONS:
                         location_source = True
+                    if source_ident in HEALTH_SAMPLE_SOURCE_ACTIONS:
+                        health_sample_source = True
                 if weather_source:
                     weather_source_vars.add(name)
                 if location_source:
                     location_source_vars.add(name)
+                if health_sample_source:
+                    health_sample_source_vars.add(name)
 
         if ident == "is.workflow.actions.getvariable":
             wfvar = params.get("WFVariable")
@@ -2021,6 +2220,162 @@ def validate(
                                         errors.append(
                                             f"Find Notes Folder filter Enumeration value is empty at index {idx}"
                                         )
+
+        if ident == HEALTH_FIND_SAMPLES_ACTION:
+            health_type = params.get("WFHealthQuantityType")
+            if _token_param_is_empty(health_type):
+                errors.append(f"Find Health Samples missing WFHealthQuantityType at index {idx}")
+            elif (
+                isinstance(health_type, str)
+                and HEALTH_REFERENCE_SETS["quantity_types"]
+                and health_type not in HEALTH_REFERENCE_SETS["quantity_types"]
+            ):
+                errors.append(
+                    f"Find Health Samples uses unknown WFHealthQuantityType '{health_type}' at index {idx}"
+                )
+            _validate_health_filter_template(
+                params.get("WFContentItemFilter"),
+                action_label="Find Health Samples",
+                idx=idx,
+                errors=errors,
+            )
+            if "WFContentItemLimitEnabled" in params and not isinstance(
+                params.get("WFContentItemLimitEnabled"), bool
+            ):
+                errors.append(
+                    f"Find Health Samples WFContentItemLimitEnabled must be boolean at index {idx}"
+                )
+            if params.get("WFContentItemLimitEnabled") is True:
+                limit_number = params.get("WFContentItemLimitNumber")
+                if limit_number is None or limit_number == "":
+                    errors.append(
+                        f"Find Health Samples limit is enabled but WFContentItemLimitNumber is missing at index {idx}"
+                    )
+
+        if ident == HEALTH_SAMPLE_DETAIL_ACTION:
+            prop_name = params.get("WFContentItemPropertyName")
+            if _token_param_is_empty(prop_name):
+                errors.append(
+                    f"Get Details of Health Sample missing WFContentItemPropertyName at index {idx}"
+                )
+            elif isinstance(prop_name, str) and prop_name not in HEALTH_SAMPLE_DETAIL_PROPERTIES:
+                errors.append(
+                    f"Get Details of Health Sample uses unknown detail '{prop_name}' at index {idx}"
+                )
+
+            health_input = params.get("WFInput")
+            if _token_param_is_empty(health_input):
+                errors.append(f"Get Details of Health Sample missing WFInput at index {idx}")
+            elif not _input_is_attached(health_input):
+                errors.append(
+                    f"Get Details of Health Sample WFInput is not a token attachment at index {idx}"
+                )
+            elif not _input_has_reference(health_input):
+                errors.append(
+                    f"Get Details of Health Sample WFInput has no variable/output reference at index {idx}"
+                )
+            else:
+                input_var_name = _extract_input_variable_name(health_input)
+                if input_var_name:
+                    if input_var_name not in health_sample_source_vars:
+                        errors.append(
+                            f"Get Details of Health Sample variable '{input_var_name}' does not resolve to Health Samples at index {idx}"
+                        )
+                for out_uuid in _input_action_output_uuids(health_input):
+                    source_ident = uuid_to_ident.get(out_uuid)
+                    if source_ident is None:
+                        errors.append(
+                            f"Get Details of Health Sample references unknown OutputUUID at index {idx}"
+                        )
+                    elif source_ident not in HEALTH_SAMPLE_SOURCE_ACTIONS:
+                        errors.append(
+                            f"Get Details of Health Sample should reference Find Health Samples/Log Health Sample output at index {idx}"
+                        )
+
+        if ident == HEALTH_LOG_SAMPLE_ACTION:
+            sample_type = params.get("WFQuantitySampleType")
+            if _token_param_is_empty(sample_type):
+                errors.append(f"Log Health Sample missing WFQuantitySampleType at index {idx}")
+            elif (
+                isinstance(sample_type, str)
+                and HEALTH_REFERENCE_SETS["sample_types"]
+                and sample_type not in HEALTH_REFERENCE_SETS["sample_types"]
+            ):
+                errors.append(
+                    f"Log Health Sample uses unknown WFQuantitySampleType '{sample_type}' at index {idx}"
+                )
+
+            has_quantity = "WFQuantitySampleQuantity" in params
+            has_category = (
+                "WFCategorySampleEnumeration" in params
+                or "WFCategorySampleAdditionalEnumerationKey" in params
+            )
+            if not has_quantity and not has_category:
+                errors.append(
+                    f"Log Health Sample missing sample value: use WFQuantitySampleQuantity or WFCategorySampleEnumeration at index {idx}"
+                )
+
+            for key in HEALTH_QUANTITY_FIELD_KEYS:
+                if key not in params:
+                    continue
+                require_magnitude = key in HEALTH_REQUIRED_MAIN_QUANTITY_KEYS
+                if key == "WFQuantitySampleAdditionalQuantity":
+                    # The local Caffeine export includes only Unit for the
+                    # secondary quantity field, so Magnitude must remain optional.
+                    require_magnitude = False
+                _validate_health_quantity_field(
+                    params.get(key),
+                    key=key,
+                    idx=idx,
+                    errors=errors,
+                    require_magnitude=require_magnitude,
+                )
+
+            for key in (
+                "WFCategorySampleEnumeration",
+                "WFCategorySampleAdditionalEnumerationKey",
+                "WFQuantitySampleAdditionalEnumeration",
+            ):
+                if key in params and _token_param_is_empty(params.get(key)):
+                    errors.append(f"Log Health Sample {key} is empty at index {idx}")
+                elif (
+                    key in params
+                    and isinstance(params.get(key), str)
+                    and HEALTH_REFERENCE_SETS["category_values"]
+                    and params.get(key) not in HEALTH_REFERENCE_SETS["category_values"]
+                ):
+                    errors.append(
+                        f"Log Health Sample {key} uses unknown category value '{params.get(key)}' at index {idx}"
+                    )
+
+            for key in ("WFQuantitySampleDate", "WFSampleEndDate"):
+                if key in params:
+                    _validate_health_date_like(params.get(key), key=key, idx=idx, errors=errors)
+
+        if ident == HEALTH_LOG_WORKOUT_ACTION:
+            workout_type = params.get("WFWorkoutReadableActivityType")
+            if _token_param_is_empty(workout_type):
+                errors.append(f"Log Workout missing WFWorkoutReadableActivityType at index {idx}")
+            elif (
+                isinstance(workout_type, str)
+                and HEALTH_REFERENCE_SETS["workouts"]
+                and workout_type not in HEALTH_REFERENCE_SETS["workouts"]
+            ):
+                errors.append(
+                    f"Log Workout uses unknown WFWorkoutReadableActivityType '{workout_type}' at index {idx}"
+                )
+            for key in ("WFWorkoutDate",):
+                if key in params:
+                    _validate_health_date_like(params.get(key), key=key, idx=idx, errors=errors)
+            for key in ("WFWorkoutDuration", "WFWorkoutCaloriesQuantity", "WFWorkoutDistanceQuantity"):
+                if key in params:
+                    _validate_health_quantity_field(
+                        params.get(key),
+                        key=key,
+                        idx=idx,
+                        errors=errors,
+                        require_magnitude=True,
+                    )
 
         if ident == "is.workflow.actions.text.translate":
             if "WFInputText" not in params:

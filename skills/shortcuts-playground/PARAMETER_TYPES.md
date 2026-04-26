@@ -290,6 +290,7 @@ Actions that use content filters:
 - `is.workflow.actions.filter.music`
 - `is.workflow.actions.filter.articles`
 - `is.workflow.actions.filter.apps`
+- `is.workflow.actions.filter.health.quantity`
 - `is.workflow.actions.conditional` (via `WFConditions`)
 
 ---
@@ -320,6 +321,70 @@ Used for measurements with units (duration, file size, etc.):
 | Time | `sec`, `min`, `hr`, `days` |
 | Data | `bytes`, `KB`, `MB`, `GB` |
 | Length | `m`, `km`, `ft`, `mi` |
+
+### HealthKit Quantity Fields
+
+Verified from Federico's local iPhone exports and the local ActionKit `WFHealthKitConstants.plist`.
+
+For **Log Health Sample**, the main value uses `WFQuantitySampleQuantity`:
+
+```xml
+<key>WFQuantitySampleQuantity</key>
+<dict>
+    <key>Value</key>
+    <dict>
+        <key>Magnitude</key>
+        <string>120</string>
+        <key>Unit</key>
+        <string>mg</string>
+    </dict>
+    <key>WFSerializationType</key>
+    <string>WFQuantityFieldValue</string>
+</dict>
+```
+
+The local Caffeine, Bloating, and Cervical Mucus Quality exports also include `WFQuantitySampleAdditionalQuantity`; it can be unit-only:
+
+```xml
+<key>WFQuantitySampleAdditionalQuantity</key>
+<dict>
+    <key>Value</key>
+    <dict>
+        <key>Unit</key>
+        <string>mg</string>
+    </dict>
+    <key>WFSerializationType</key>
+    <string>WFQuantityFieldValue</string>
+</dict>
+```
+
+Category values can additionally include `WFCategorySampleEnumeration`:
+
+```xml
+<key>WFQuantitySampleType</key>
+<string>Cervical Mucus Quality</string>
+<key>WFCategorySampleEnumeration</key>
+<string>Dry</string>
+```
+
+Health date fields such as `WFQuantitySampleDate`, `WFSampleEndDate`, and `WFWorkoutDate` accept token attachments; `{Type: CurrentDate}` is valid:
+
+```xml
+<key>WFQuantitySampleDate</key>
+<dict>
+    <key>Value</key>
+    <dict>
+        <key>Type</key>
+        <string>CurrentDate</string>
+    </dict>
+    <key>WFSerializationType</key>
+    <string>WFTextTokenAttachment</string>
+</dict>
+```
+
+ActionKit Health unit strings currently covered by the regression suite:
+
+`g`, `m`, `L`, `Pa`, `s`, `J`, `K`, `S`, `mg`, `kg`, `mm`, `km`, `mL`, `kPa`, `ms`, `kJ`, `kK`, `mS`, `kS`, `oz`, `lb`, `st`, `in`, `ft`, `mi`, `mmHg`, `cmAq`, `atm`, `fl_oz_us`, `fl_oz_imp`, `pt_us`, `pt_imp`, `min`, `hr`, `d`, `cal`, `kcal`, `degC`, `degF`, `count`, `%`, `count/min`, `mg/dl`, `J/s`, `m/s^2`, `m/s`.
 
 ---
 

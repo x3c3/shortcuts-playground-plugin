@@ -1,6 +1,6 @@
 # Shortcuts Actions Reference
 
-Complete catalog of all 363 WF*Action identifiers (macOS ToolKit v63 + backups).
+Complete catalog of all 365 WF*Action identifiers (macOS ToolKit v63 + local iOS HealthKit backups).
 
 > Note: In ToolKit SQLite `Tools`, four control-flow actions are not represented as normal tools:
 > `is.workflow.actions.conditional`, `is.workflow.actions.repeat.count`,
@@ -152,6 +152,17 @@ Some actions have non-standard mappings:
 | `getdistance` | WFGetDistanceAction | Get distance |
 | `searchmaps` | WFSearchMapsAction | Search maps |
 
+### Health
+
+These actions are iOS/iPadOS Health actions. macOS Shortcuts can sync their plist XML, but cannot fully configure or run the Health UI. Use [HEALTHKIT.md](HEALTHKIT.md) for the verified parameter schemas.
+
+| Identifier | Class | Description |
+|------------|-------|-------------|
+| `filter.health.quantity` | WFFindHealthSamplesAction | Find Health Samples |
+| `properties.health.quantity` | WFGetDetailsOfHealthSampleAction | Get Details of Health Sample |
+| `health.quantity.log` | WFLogHealthSampleAction | Log Health Sample |
+| `health.workout.log` | WFLogWorkoutAction | Log Workout |
+
 ### Media
 
 | Identifier | Class | Description |
@@ -202,7 +213,7 @@ Some actions have non-standard mappings:
 ---
 ## Complete Identifier List
 
-All 363 action identifiers (prefix `is.workflow.actions.` omitted):
+All 365 action identifiers (prefix `is.workflow.actions.` omitted):
 
 ```
 addframetogif, addmusictoupnext, addnewcalendar, addnewcontact, addnewevent
@@ -223,8 +234,9 @@ evernote.getlink, evernote.new, exit, exportsong, extracttextfromimage
 file, file.append, file.createfolder, file.delete, file.getfoldercontents
 file.getlink, file.label, file.move, file.rename, file.reveal
 file.select, filter.apps, filter.articles, filter.calendarevents, filter.contacts
-filter.displays, filter.eventattendees, filter.files, filter.images, filter.locations
-filter.music, filter.notes, filter.photos, filter.reminders, filter.windows
+filter.displays, filter.eventattendees, filter.files, filter.health.quantity
+filter.images, filter.locations, filter.music, filter.notes, filter.photos
+filter.reminders, filter.windows
 finder.getselectedfiles, flashlight, format.date, format.filesize, format.number
 generatebarcode, get.playlist, getarticle, getbatterylevel, getclassaction
 getclipboard, getcurrentapp, getcurrentlocation, getcurrentsong, getdevicedetails
@@ -252,9 +264,10 @@ personalhotspot.set, phonenumber, photos.createalbum, pinboard.add, pinboard.get
 playmusic, playpodcast, playsound, pocket.add, pocket.get
 podcasts.subscribe, posters.get, posters.switch, postonfacebook, previewdocument
 print, properties.appearance, properties.appstore, properties.articles, properties.calendarevents
-properties.contacts, properties.eventattendees, properties.files, properties.images, properties.itunesartist
-properties.itunesstore, properties.locations, properties.music, properties.parkedcar, properties.podcast
-properties.podcastshow, properties.reminders, properties.ridestatus, properties.safariwebpage, properties.shazam
+properties.contacts, properties.eventattendees, properties.files, properties.health.quantity
+properties.images, properties.itunesartist, properties.itunesstore, properties.locations
+properties.music, properties.parkedcar, properties.podcast, properties.podcastshow
+properties.reminders, properties.ridestatus, properties.safariwebpage, properties.shazam
 properties.trello, properties.ulysses.sheet, properties.weather.conditions, properties.workflow, quit.app
 readinglist, reboot, recordaudio, reminders.showlist, removeevents
 removefromalbum, removereminders, repeat.count, repeat.each, resizewindow

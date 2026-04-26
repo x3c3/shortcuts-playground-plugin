@@ -7,6 +7,7 @@ A skill for AI-assisted generation of macOS/iOS Shortcuts. It produces valid `.s
 - Start with [SKILL.md](SKILL.md) for workflow and high-level rules.
 - Treat [BEST_PRACTICES.md](BEST_PRACTICES.md) as mandatory policy.
 - Use [ACTIONS.md](ACTIONS.md), [APPINTENTS.md](APPINTENTS.md), and [THIRD_PARTY_ACTIONS.md](THIRD_PARTY_ACTIONS.md) as the identifier references.
+- Use [HEALTHKIT.md](HEALTHKIT.md) for iOS/iPadOS Health actions.
 - If a rule appears in multiple docs, treat [BEST_PRACTICES.md](BEST_PRACTICES.md) as policy authority.
 
 ## Installation
@@ -37,6 +38,7 @@ Your directory structure should include:
         ├── CONTROL_FLOW.md
         ├── EXAMPLES.md
         ├── FILTERS.md
+        ├── HEALTHKIT.md
         ├── ICONS_AND_COLORS.md
         ├── PARAMETER_TYPES.md
         ├── PLIST_FORMAT.md
@@ -95,6 +97,7 @@ To make the skill portable for distribution, the action-ID allowlist is prepacka
 | [`VARIABLES.md`](VARIABLES.md) | Variable reference system |
 | [`CONTROL_FLOW.md`](CONTROL_FLOW.md) | Repeat, Conditional, Menu patterns |
 | [`FILTERS.md`](FILTERS.md) | Content filters for Find/Filter actions |
+| [`HEALTHKIT.md`](HEALTHKIT.md) | iOS/iPadOS Health action schemas and local XML evidence |
 | [`EXAMPLES.md`](EXAMPLES.md) | Complete working examples |
 | [`BEST_PRACTICES.md`](BEST_PRACTICES.md) | Mandatory build guidelines |
 | [`ICONS_AND_COLORS.md`](ICONS_AND_COLORS.md) | Icon glyph and color selection workflow |
@@ -102,10 +105,12 @@ To make the skill portable for distribution, the action-ID allowlist is prepacka
 | [`TOOLKIT_SNAPSHOT.md`](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit v63 metadata package and field coverage |
 | `scripts/select_shortcut_icon_color.py` | Natural-language icon/color resolver |
 | `scripts/validate_shortcut.py` | Preflight validator used by the validation loop |
+| `scripts/generate_healthkit_reference.py` | Generates the local HealthKit type/unit reference |
 | `data/shortcuts-official-glyph-mapping.json` | Official 507 glyph mapping |
 | `data/shortcuts-glyph-synonyms.json` | Synonym map for all 507 glyphs |
 | `data/shortcuts-icon-colors.json` | Shortcuts 15-color palette with aliases |
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
+| `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 
 ## Requirements
 
