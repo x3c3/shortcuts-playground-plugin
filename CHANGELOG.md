@@ -2,7 +2,7 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
-## [Unreleased] — 2026-04-26
+## [1.6.0] — 2026-04-26
 
 ### Added — HealthKit action support
 
