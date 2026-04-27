@@ -6,7 +6,7 @@ Health actions are iOS/iPadOS-first. macOS Shortcuts syncs their XML but cannot 
 
 Primary syntax source: bundled anonymized iOS Shortcuts XML examples captured while building this reference. User-specific shortcut names, source paths, and iCloud locations are intentionally omitted from the distributed skill.
 
-- Find Health Samples XML example: `WFHealthQuantityType`, `WFContentItemFilter`, sample output wiring.
+- Find Health Samples XML example: `WFContentItemFilter` with a `Type is ...` predicate row, date filter row, and sample output wiring.
 - Log Health Sample quantity XML example: Caffeine quantity log.
 - Log Health Sample category XML example: category sample with no visible Value row in the editor.
 - Log Health Sample category-value XML example: category sample with an explicit enum value picker.
@@ -24,19 +24,18 @@ Identifier: `is.workflow.actions.filter.health.quantity`
 Required parameters:
 
 - `UUID`
-- `WFHealthQuantityType`: Shortcuts UI label, for example `Caffeine`, `Step Count`, `Walking + Running Distance`.
-- `WFContentItemFilter`: `WFContentPredicateTableTemplate`.
+- `WFContentItemFilter`: `WFContentPredicateTableTemplate` containing a `Type` predicate row. Use the Shortcuts UI label as `Values.String`, for example `Caffeine`, `Step Count`, `Walking + Running Distance`.
 
 Optional:
 
 - `WFContentItemLimitEnabled`: boolean.
 - `WFContentItemLimitNumber`: required when limit is enabled.
 
+Do not use `WFHealthQuantityType`. That top-level key was previously documented here, but current iOS Shortcuts imports it as an inert plist field: the editor still renders a generic `Find Health Samples where` action and omits the expected `Type is ...` row.
+
 Observed filter shape:
 
 ```xml
-<key>WFHealthQuantityType</key>
-<string>Caffeine</string>
 <key>WFContentItemFilter</key>
 <dict>
     <key>Value</key>
@@ -47,6 +46,21 @@ Observed filter shape:
         <false/>
         <key>WFActionParameterFilterTemplates</key>
         <array>
+            <dict>
+                <key>Operator</key>
+                <integer>4</integer>
+                <key>Property</key>
+                <string>Type</string>
+                <key>Removable</key>
+                <true/>
+                <key>Values</key>
+                <dict>
+                    <key>String</key>
+                    <string>Caffeine</string>
+                    <key>Unit</key>
+                    <integer>4</integer>
+                </dict>
+            </dict>
             <dict>
                 <key>Operator</key>
                 <integer>1002</integer>
@@ -63,6 +77,8 @@ Observed filter shape:
     <string>WFContentPredicateTableTemplate</string>
 </dict>
 ```
+
+`Operator` `4` is `is` for the `Type` row. `Operator` `1002` with empty `Values` is the observed `Start Date is today` row. Use `WFActionParameterFilterPrefix = 1` for All when combining type and date rows.
 
 Output name observed in downstream wiring: `Health Samples`.
 
@@ -272,7 +288,7 @@ Known bundled label override:
 
 - `HKCategoryTypeIdentifierGeneralizedBodyAche`: Shortcuts picker label is `Body and Muscle Ache`, not the SDK-derived `Generalized Body Ache`.
 
-The validator checks Health sample types, Find Health Samples quantity types, workout activity types, category enum values, and units against this bundled reference when it is available.
+The validator checks Health sample types, Find Health Samples `Type` filter values, workout activity types, category enum values, and units against this bundled reference when it is available.
 
 ## Safety
 

@@ -154,20 +154,38 @@ def quantity_field(magnitude: object = "1", unit: str = "count") -> dict:
     return {"WFSerializationType": "WFQuantityFieldValue", "Value": value}
 
 
-def health_filter_template(operator: int = 1002, property_name: str = "Start Date") -> dict:
+def health_filter_template(
+    health_type: str | None = "Step Count",
+    operator: int = 1002,
+    property_name: str = "Start Date",
+) -> dict:
+    templates = []
+    if health_type is not None:
+        templates.append(
+            {
+                "Operator": 4,
+                "Property": "Type",
+                "Removable": True,
+                "Values": {
+                    "String": health_type,
+                    "Unit": 4,
+                },
+            }
+        )
+    templates.append(
+        {
+            "Operator": operator,
+            "Property": property_name,
+            "Removable": True,
+            "Values": {},
+        }
+    )
     return {
         "WFSerializationType": "WFContentPredicateTableTemplate",
         "Value": {
             "WFActionParameterFilterPrefix": 1,
             "WFContentPredicateBoundedDate": False,
-            "WFActionParameterFilterTemplates": [
-                {
-                    "Operator": operator,
-                    "Property": property_name,
-                    "Removable": True,
-                    "Values": {},
-                }
-            ],
+            "WFActionParameterFilterTemplates": templates,
         },
     }
 
@@ -659,8 +677,7 @@ def make_health_find_detail_valid(case_name: str, idx: int, health_type: str) ->
             "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
             "WFWorkflowActionParameters": {
                 "UUID": find_uuid,
-                "WFHealthQuantityType": health_type,
-                "WFContentItemFilter": health_filter_template(),
+                "WFContentItemFilter": health_filter_template(health_type),
                 "WFContentItemLimitEnabled": False,
             },
         }
@@ -690,8 +707,7 @@ def make_health_find_detail_via_variable_valid(case_name: str, health_type: str)
             "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
             "WFWorkflowActionParameters": {
                 "UUID": find_uuid,
-                "WFHealthQuantityType": health_type,
-                "WFContentItemFilter": health_filter_template(),
+                "WFContentItemFilter": health_filter_template(health_type),
                 "WFContentItemLimitEnabled": False,
             },
         }
@@ -836,18 +852,17 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
                 "WFWorkflowActionParameters": {
                     "UUID": seeded_uuid(f"{case_name}-find-health"),
-                    "WFContentItemFilter": health_filter_template(),
+                    "WFContentItemFilter": health_filter_template(None),
                 },
             }
         )
-        expected = "WFHealthQuantityType"
+        expected = "Type filter"
     elif pattern == 1:
         actions.append(
             {
                 "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
                 "WFWorkflowActionParameters": {
                     "UUID": seeded_uuid(f"{case_name}-find-health"),
-                    "WFHealthQuantityType": "Step Count",
                 },
             }
         )
@@ -859,8 +874,7 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
                 "WFWorkflowActionParameters": {
                     "UUID": find_uuid,
-                    "WFHealthQuantityType": "Step Count",
-                    "WFContentItemFilter": health_filter_template(),
+                    "WFContentItemFilter": health_filter_template("Step Count"),
                     "WFContentItemLimitEnabled": False,
                 },
             }
@@ -954,12 +968,11 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
                 "WFWorkflowActionParameters": {
                     "UUID": seeded_uuid(f"{case_name}-find-health"),
-                    "WFHealthQuantityType": "Not A Health Quantity",
-                    "WFContentItemFilter": health_filter_template(),
+                    "WFContentItemFilter": health_filter_template("Not A Health Quantity"),
                 },
             }
         )
-        expected = "unknown WFHealthQuantityType"
+        expected = "unknown Type filter value"
     elif pattern == 10:
         actions.append(
             {

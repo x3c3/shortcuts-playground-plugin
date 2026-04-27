@@ -15,7 +15,7 @@
       "coverage": [
         "is.workflow.actions.filter.health.quantity",
         "WFContentItemFilter",
-        "WFHealthQuantityType",
+        "Type filter row",
         "WFContentItemLimitEnabled"
       ],
       "evidence_id": "find_health_samples_quantity_filter"
@@ -2103,7 +2103,6 @@
     "find_health_samples": {
       "identifier": "is.workflow.actions.filter.health.quantity",
       "required_parameters": [
-        "WFHealthQuantityType",
         "WFContentItemFilter"
       ],
       "sample_output_name": "Health Samples"

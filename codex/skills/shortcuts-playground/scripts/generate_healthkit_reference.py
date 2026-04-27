@@ -69,7 +69,7 @@ BUNDLED_XML_EVIDENCE = [
         "coverage": [
             "is.workflow.actions.filter.health.quantity",
             "WFContentItemFilter",
-            "WFHealthQuantityType",
+            "Type filter row",
             "WFContentItemLimitEnabled",
         ],
     },
@@ -338,7 +338,7 @@ def main() -> int:
             "find_health_samples": {
                 "identifier": "is.workflow.actions.filter.health.quantity",
                 "sample_output_name": "Health Samples",
-                "required_parameters": ["WFHealthQuantityType", "WFContentItemFilter"],
+                "required_parameters": ["WFContentItemFilter"],
             },
             "get_health_sample_detail": {
                 "identifier": "is.workflow.actions.properties.health.quantity",

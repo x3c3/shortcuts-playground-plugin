@@ -280,6 +280,8 @@ When `WFItemType = 2` (Array), `WFValue` uses `WFArrayParameterState` with a lis
 
 Used by all Find/Filter actions. See [FILTERS.md](./FILTERS.md) for complete documentation.
 
+For `is.workflow.actions.filter.health.quantity`, the Health sample type is a normal content predicate row: `Property` `Type`, `Operator` `4`, and `Values.String` set to a Shortcuts Health label such as `Step Count`. Do not emit top-level `WFHealthQuantityType`; it imports as an inert field and the iOS editor will show the wrong generic action.
+
 Actions that use content filters:
 - `is.workflow.actions.filter.photos`
 - `is.workflow.actions.filter.files`
