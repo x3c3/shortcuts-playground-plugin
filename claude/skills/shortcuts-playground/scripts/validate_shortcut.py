@@ -991,7 +991,7 @@ def _validate_health_filter_template(
             errors.append(f"{action_label} filter template {tidx} Values must be a dict at index {idx}")
 
 
-def _health_filter_type_value(filter_value) -> tuple[Optional[str], Optional[int], bool]:
+def _health_filter_sample_value(filter_value) -> tuple[Optional[str], Optional[int], bool]:
     if not isinstance(filter_value, dict):
         return None, None, False
     inner = filter_value.get("Value")
@@ -1002,7 +1002,7 @@ def _health_filter_type_value(filter_value) -> tuple[Optional[str], Optional[int
         return None, None, False
 
     for template in templates:
-        if not isinstance(template, dict) or template.get("Property") != "Type":
+        if not isinstance(template, dict) or template.get("Property") != "Value":
             continue
         values = template.get("Values")
         if not isinstance(values, dict):
@@ -2256,7 +2256,7 @@ def validate(
         if ident == HEALTH_FIND_SAMPLES_ACTION:
             if "WFHealthQuantityType" in params:
                 errors.append(
-                    f"Find Health Samples uses obsolete WFHealthQuantityType at index {idx}; put the sample kind in a Type filter row"
+                    f"Find Health Samples uses obsolete WFHealthQuantityType at index {idx}; put the sample kind in a Value filter row"
                 )
             _validate_health_filter_template(
                 params.get("WFContentItemFilter"),
@@ -2264,14 +2264,14 @@ def validate(
                 idx=idx,
                 errors=errors,
             )
-            health_type, type_operator, malformed_type = _health_filter_type_value(
+            health_type, type_operator, malformed_type = _health_filter_sample_value(
                 params.get("WFContentItemFilter")
             )
             if malformed_type or _token_param_is_empty(health_type):
-                errors.append(f"Find Health Samples missing Type filter at index {idx}")
+                errors.append(f"Find Health Samples missing Value filter at index {idx}")
             elif type_operator != 4:
                 errors.append(
-                    f"Find Health Samples Type filter must use operator 4 at index {idx}"
+                    f"Find Health Samples Value filter must use operator 4 at index {idx}"
                 )
             elif (
                 isinstance(health_type, str)
@@ -2279,7 +2279,7 @@ def validate(
                 and health_type not in HEALTH_REFERENCE_SETS["quantity_types"]
             ):
                 errors.append(
-                    f"Find Health Samples uses unknown Type filter value '{health_type}' at index {idx}"
+                    f"Find Health Samples uses unknown Value filter value '{health_type}' at index {idx}"
                 )
             if "WFContentItemLimitEnabled" in params and not isinstance(
                 params.get("WFContentItemLimitEnabled"), bool

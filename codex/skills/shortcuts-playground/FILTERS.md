@@ -111,7 +111,7 @@ The `is today` operator (1002) does NOT require Values:
 
 ### Find Health Samples "Start Date Is Today" Filter
 
-Verified from a manually created iOS Shortcuts XML example and a generated shortcut failure. **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, with the Health sample kind represented as a normal `Type` predicate row. Do not use top-level `WFHealthQuantityType`; current iOS Shortcuts ignores it and renders the action without the expected `Type is ...` field.
+Verified from a manually created iOS Shortcuts XML example and a generated shortcut failure. **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, with the Health sample kind represented as a normal `Value` predicate row. Do not use top-level `WFHealthQuantityType`; current iOS Shortcuts ignores it and renders the action without the expected `Value is ...` field.
 
 ```xml
 <key>WFContentItemFilter</key>
@@ -128,7 +128,7 @@ Verified from a manually created iOS Shortcuts XML example and a generated short
                 <key>Operator</key>
                 <integer>4</integer>
                 <key>Property</key>
-                <string>Type</string>
+                <string>Value</string>
                 <key>Removable</key>
                 <true/>
                 <key>Values</key>

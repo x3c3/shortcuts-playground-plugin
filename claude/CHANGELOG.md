@@ -2,13 +2,21 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.7.2] — 2026-04-28
+
+### Fixed — Find Health Samples Value field
+
+- Corrected Find Health Samples sample-kind filters to use `Property = Value`, not `Type`.
+- Updated Claude Code and Codex validators to reject the broken `Type` row that imported as an empty red field.
+- Updated HealthKit docs, generated reference metadata, and regression fixtures in both package trees.
+
 ## [1.7.1] — 2026-04-27
 
 ### Fixed — Find Health Samples Type filter
 
 - Corrected both Claude Code and Codex packages so generated Find Health Samples actions no longer use obsolete top-level `WFHealthQuantityType`.
-- Updated HealthKit docs and validator rules to require the Health sample kind as a `WFContentItemFilter` `Type is ...` predicate row.
-- Added regression coverage for missing and unknown Health sample Type filters.
+- Updated HealthKit docs and validator rules to require the Health sample kind inside `WFContentItemFilter`; 1.7.2 later corrected the field name from `Type` to `Value`.
+- Added regression coverage for missing and unknown Health sample-kind filters.
 
 ## [1.7.0] — 2026-04-26
 

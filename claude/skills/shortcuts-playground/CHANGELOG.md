@@ -1,16 +1,28 @@
 # Autoresearch Loop Changelog
 
+## Date: April 28, 2026 — 1.7.2 HealthKit Value filter correction
+
+### Summary
+
+Corrected the Find Health Samples predicate row discovered by comparing a two-action shortcut with one manually repaired action and one generated action. The sample-kind row must use `Property = Value`; using `Property = Type` preserves the stored sample label but imports as an empty red field until the user manually selects `Value`.
+
+### Fixes Applied
+
+- Updated HealthKit docs and examples to use `Value is <Health sample type>` for Find Health Samples.
+- Updated `validate_shortcut.py` to reject missing/malformed `Value` filter rows and no longer accept `Type` rows for the sample-kind predicate.
+- Updated `test_wiring_regressions.py`, generated reference metadata, and the reference generator to use `Value` rows.
+
 ## Date: April 27, 2026 — 1.7.1 HealthKit filter correction
 
 ### Summary
 
-Corrected Find Health Samples guidance after comparing a generated Health shortcut against a manually created iOS action. The previously documented top-level `WFHealthQuantityType` key is not honored by the iOS Shortcuts editor; the sample kind must be represented as a `Type is ...` row inside `WFContentItemFilter`.
+Corrected Find Health Samples guidance after comparing a generated Health shortcut against a manually created iOS action. The previously documented top-level `WFHealthQuantityType` key is not honored by the iOS Shortcuts editor. This release moved the sample kind into `WFContentItemFilter`; 1.7.2 later corrected the row property from `Type` to `Value`.
 
 ### Fixes Applied
 
 - Updated `HEALTHKIT.md`, `FILTERS.md`, `PARAMETER_TYPES.md`, `BEST_PRACTICES.md`, and `SKILL.md` to forbid `WFHealthQuantityType` for Find Health Samples.
-- Updated `validate_shortcut.py` to reject obsolete `WFHealthQuantityType`, require a `Type` predicate row, validate `Operator` `4`, and validate the type label against the bundled HealthKit reference.
-- Updated `test_wiring_regressions.py` so valid Health sample find/detail cases use `WFContentItemFilter` Type rows and invalid cases catch missing, malformed, or unknown Type rows.
+- Updated `validate_shortcut.py` to reject obsolete `WFHealthQuantityType` and require a sample-kind predicate row.
+- Updated `test_wiring_regressions.py` so valid Health sample find/detail cases use `WFContentItemFilter` sample-kind rows and invalid cases catch missing, malformed, or unknown sample-kind rows.
 - Updated `data/healthkit-ios26.2-reference.json` metadata so the packaged evidence no longer advertises the obsolete key.
 
 ## Date: April 26, 2026 — 1.6.1 follow-up
@@ -45,7 +57,7 @@ Added HealthKit support from anonymized iOS Shortcuts XML exports, iPhoneOS 26.2
 - `WFQuantitySampleAdditionalQuantity` can be unit-only.
 - Category samples can retain the count-based quantity scaffold even when the editor hides the Value row.
 - Category picker values use `WFCategorySampleEnumeration`; observed example: `Cervical Mucus Quality` with `Dry`.
-- `is.workflow.actions.filter.health.quantity` uses `WFContentPredicateTableTemplate`; later corrected in 1.7.1 to require the sample kind as a `Type is ...` predicate row plus date filters such as `Start Date` + operator `1002` for "is today".
+- `is.workflow.actions.filter.health.quantity` uses `WFContentPredicateTableTemplate`; later corrected in 1.7.2 to require the sample kind as a `Value is ...` predicate row plus date filters such as `Start Date` + operator `1002` for "is today".
 - `is.workflow.actions.properties.health.quantity` accepts `Type`, `Value`, `Unit`, `Start Date`, `End Date`, `Duration`, `Source`, and `Name`.
 
 ## Date: March 26, 2026

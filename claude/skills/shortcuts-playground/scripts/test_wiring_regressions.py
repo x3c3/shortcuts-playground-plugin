@@ -164,7 +164,7 @@ def health_filter_template(
         templates.append(
             {
                 "Operator": 4,
-                "Property": "Type",
+                "Property": "Value",
                 "Removable": True,
                 "Values": {
                     "String": health_type,
@@ -856,7 +856,7 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 },
             }
         )
-        expected = "Type filter"
+        expected = "Value filter"
     elif pattern == 1:
         actions.append(
             {
@@ -972,7 +972,7 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 },
             }
         )
-        expected = "unknown Type filter value"
+        expected = "unknown Value filter value"
     elif pattern == 10:
         actions.append(
             {

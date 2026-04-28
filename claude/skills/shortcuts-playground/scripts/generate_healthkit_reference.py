@@ -69,7 +69,7 @@ BUNDLED_XML_EVIDENCE = [
         "coverage": [
             "is.workflow.actions.filter.health.quantity",
             "WFContentItemFilter",
-            "Type filter row",
+            "Value filter row",
             "WFContentItemLimitEnabled",
         ],
     },
