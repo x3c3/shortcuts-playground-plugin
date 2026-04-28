@@ -155,7 +155,7 @@ def quantity_field(magnitude: object = "1", unit: str = "count") -> dict:
 
 
 def health_filter_template(
-    health_type: str | None = "Step Count",
+    health_type: str | None = "Steps",
     operator: int = 1002,
     property_name: str = "Start Date",
 ) -> dict:
@@ -163,21 +163,26 @@ def health_filter_template(
     if health_type is not None:
         templates.append(
             {
+                "Bounded": True,
                 "Operator": 4,
-                "Property": "Value",
-                "Removable": True,
+                "Property": "Type",
+                "Removable": False,
                 "Values": {
-                    "String": health_type,
-                    "Unit": 4,
+                    "Enumeration": {
+                        "Value": health_type,
+                        "WFSerializationType": "WFStringSubstitutableState",
+                    },
                 },
             }
         )
+    date_values = {"Number": "7", "Unit": 16} if property_name == "Start Date" and operator == 1002 else {}
     templates.append(
         {
+            "Bounded": True,
             "Operator": operator,
             "Property": property_name,
-            "Removable": True,
-            "Values": {},
+            "Removable": False,
+            "Values": date_values,
         }
     )
     return {
@@ -190,9 +195,63 @@ def health_filter_template(
     }
 
 
+def malformed_health_value_filter_template(health_type: str = "Step Count") -> dict:
+    return {
+        "WFSerializationType": "WFContentPredicateTableTemplate",
+        "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFContentPredicateBoundedDate": False,
+            "WFActionParameterFilterTemplates": [
+                {
+                    "Operator": 4,
+                    "Property": "Value",
+                    "Removable": True,
+                    "Values": {
+                        "String": health_type,
+                        "Unit": 4,
+                    },
+                },
+                {
+                    "Operator": 1002,
+                    "Property": "Start Date",
+                    "Removable": True,
+                    "Values": {},
+                },
+            ],
+        },
+    }
+
+
+def mixed_health_type_and_value_filter_template() -> dict:
+    filter_value = health_filter_template("Steps")
+    templates = filter_value["Value"]["WFActionParameterFilterTemplates"]
+    templates.insert(
+        1,
+        {
+            "Operator": 4,
+            "Property": "Value",
+            "Removable": True,
+            "Values": {
+                "String": "Step Count",
+                "Unit": 4,
+            },
+        },
+    )
+    return filter_value
+
+
 def health_unit_hint(row: dict) -> str:
     hint = str(row.get("unit_and_aggregation") or "").split(",", 1)[0].strip()
     return hint or "count"
+
+
+def health_find_sample_label(row: dict) -> str | None:
+    observed = row.get("observed_find_samples_labels")
+    if isinstance(observed, list):
+        for label in observed:
+            if isinstance(label, str) and label:
+                return label
+    return row.get("shortcut_label_guess") or row.get("sdk_suffix")
 
 
 def load_healthkit_reference() -> dict:
@@ -843,7 +902,7 @@ def make_health_workout_valid(case_name: str, idx: int, workout_type: str) -> di
 def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
     prompt = f"HealthKit invalid case {idx}"
     actions = base_actions(case_name, prompt)
-    pattern = idx % 12
+    pattern = idx % 14
     expected = "Health"
 
     if pattern == 0:
@@ -856,7 +915,7 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 },
             }
         )
-        expected = "Value filter"
+        expected = "Type filter"
     elif pattern == 1:
         actions.append(
             {
@@ -874,7 +933,7 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
                 "WFWorkflowActionParameters": {
                     "UUID": find_uuid,
-                    "WFContentItemFilter": health_filter_template("Step Count"),
+                    "WFContentItemFilter": health_filter_template("Steps"),
                     "WFContentItemLimitEnabled": False,
                 },
             }
@@ -972,8 +1031,30 @@ def make_health_invalid(case_name: str, idx: int) -> tuple[dict, str]:
                 },
             }
         )
-        expected = "unknown Value filter value"
+        expected = "unknown Type filter value"
     elif pattern == 10:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-find-health"),
+                    "WFContentItemFilter": malformed_health_value_filter_template("Step Count"),
+                },
+            }
+        )
+        expected = "Type filter"
+    elif pattern == 11:
+        actions.append(
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-find-health"),
+                    "WFContentItemFilter": mixed_health_type_and_value_filter_template(),
+                },
+            }
+        )
+        expected = "Type filter"
+    elif pattern == 12:
         actions.append(
             {
                 "WFWorkflowActionIdentifier": "is.workflow.actions.health.quantity.log",
@@ -1050,13 +1131,13 @@ def build_cases() -> list[Case]:
 
     # Find Health Samples + Get Details: all SDK-known quantity types.
     for idx, row in enumerate(quantity_types):
-        label = row.get("shortcut_label_guess") or row.get("sdk_suffix") or f"Quantity {idx}"
+        label = health_find_sample_label(row) or f"Quantity {idx}"
         case_name = f"ZZ-Health-Find-Detail-Valid-{idx + 1:03d}"
         cases.append(Case("healthkit", case_name, make_health_find_detail_valid(case_name, idx, label), True))
 
     if quantity_types:
         case_name = "ZZ-Health-Find-Detail-Variable-Valid"
-        label = quantity_types[0].get("shortcut_label_guess") or "Step Count"
+        label = health_find_sample_label(quantity_types[0]) or "Steps"
         cases.append(
             Case(
                 "healthkit",

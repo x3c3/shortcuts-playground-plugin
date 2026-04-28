@@ -280,7 +280,7 @@ When `WFItemType = 2` (Array), `WFValue` uses `WFArrayParameterState` with a lis
 
 Used by all Find/Filter actions. See [FILTERS.md](./FILTERS.md) for complete documentation.
 
-For `is.workflow.actions.filter.health.quantity`, the Health sample type is a normal content predicate row: `Property` `Value`, `Operator` `4`, and `Values.String` set to a Shortcuts Health label such as `Step Count`. Do not emit top-level `WFHealthQuantityType`; it imports as an inert field and the iOS editor will show the wrong generic action.
+For `is.workflow.actions.filter.health.quantity`, the Health sample type is a locked content predicate row: `Property` `Type`, `Operator` `4`, `Bounded` true, `Removable` false, and `Values.Enumeration` set to a `WFStringSubstitutableState` whose `Value` is the Find Health Samples picker label such as `Steps`. Do not emit top-level `WFHealthQuantityType`; it imports as an inert field. Do not use `Property` `Value` plus `Values.String`; it imports as an editable text filter instead of the Health type picker.
 
 Actions that use content filters:
 - `is.workflow.actions.filter.photos`

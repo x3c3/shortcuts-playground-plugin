@@ -111,7 +111,7 @@ The `is today` operator (1002) does NOT require Values:
 
 ### Find Health Samples "Start Date Is Today" Filter
 
-Verified from a manually created iOS Shortcuts XML example and a generated shortcut failure. **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, with the Health sample kind represented as a normal `Value` predicate row. Do not use top-level `WFHealthQuantityType`; current iOS Shortcuts ignores it and renders the action without the expected `Value is ...` field.
+Verified from a manually created iOS Shortcuts XML example and generated shortcut failures. **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, but the Health sample kind is a locked `Type` predicate row backed by an enumeration state. Do not use top-level `WFHealthQuantityType`, and do not use a `Value` predicate row with `Values.String`; current iOS Shortcuts renders that as an editable text filter instead of the Health type picker.
 
 ```xml
 <key>WFContentItemFilter</key>
@@ -125,29 +125,41 @@ Verified from a manually created iOS Shortcuts XML example and a generated short
         <key>WFActionParameterFilterTemplates</key>
         <array>
             <dict>
+                <key>Bounded</key>
+                <true/>
                 <key>Operator</key>
                 <integer>4</integer>
                 <key>Property</key>
-                <string>Value</string>
+                <string>Type</string>
                 <key>Removable</key>
-                <true/>
+                <false/>
                 <key>Values</key>
                 <dict>
-                    <key>String</key>
-                    <string>Step Count</string>
-                    <key>Unit</key>
-                    <integer>4</integer>
+                    <key>Enumeration</key>
+                    <dict>
+                        <key>Value</key>
+                        <string>Steps</string>
+                        <key>WFSerializationType</key>
+                        <string>WFStringSubstitutableState</string>
+                    </dict>
                 </dict>
             </dict>
             <dict>
+                <key>Bounded</key>
+                <true/>
                 <key>Operator</key>
                 <integer>1002</integer>
                 <key>Property</key>
                 <string>Start Date</string>
                 <key>Removable</key>
-                <true/>
+                <false/>
                 <key>Values</key>
-                <dict/>
+                <dict>
+                    <key>Number</key>
+                    <string>7</string>
+                    <key>Unit</key>
+                    <integer>16</integer>
+                </dict>
             </dict>
         </array>
     </dict>

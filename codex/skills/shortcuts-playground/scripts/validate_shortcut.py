@@ -345,6 +345,7 @@ HEALTH_REQUIRED_MAIN_QUANTITY_KEYS = {
 def _load_healthkit_reference_sets() -> dict[str, set[str]]:
     out = {
         "quantity_types": set(),
+        "find_sample_types": set(),
         "sample_types": set(),
         "category_values": set(),
         "workouts": set(),
@@ -374,8 +375,29 @@ def _load_healthkit_reference_sets() -> dict[str, set[str]]:
                 labels.update(item for item in observed if isinstance(item, str) and item)
         return labels
 
+    def find_sample_labels_from_rows(rows) -> set[str]:
+        labels: set[str] = set()
+        if not isinstance(rows, list):
+            return labels
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            observed_find = row.get("observed_find_samples_labels")
+            if isinstance(observed_find, list) and observed_find:
+                labels.update(item for item in observed_find if isinstance(item, str) and item)
+                continue
+            for key in ("shortcut_label_guess", "sdk_suffix"):
+                value = row.get(key)
+                if isinstance(value, str) and value:
+                    labels.add(value)
+            observed = row.get("observed_shortcuts_labels")
+            if isinstance(observed, list):
+                labels.update(item for item in observed if isinstance(item, str) and item)
+        return labels
+
     quantity_labels = labels_from_rows(payload.get("quantity_types"))
     category_labels = labels_from_rows(payload.get("category_types"))
+    out["find_sample_types"].update(find_sample_labels_from_rows(payload.get("quantity_types")))
     out["quantity_types"].update(quantity_labels)
     out["sample_types"].update(quantity_labels | category_labels)
     out["workouts"].update(labels_from_rows(payload.get("workout_activity_types")))
@@ -991,7 +1013,7 @@ def _validate_health_filter_template(
             errors.append(f"{action_label} filter template {tidx} Values must be a dict at index {idx}")
 
 
-def _health_filter_sample_value(filter_value) -> tuple[Optional[str], Optional[int], bool]:
+def _health_filter_type_value(filter_value) -> tuple[Optional[str], Optional[int], bool]:
     if not isinstance(filter_value, dict):
         return None, None, False
     inner = filter_value.get("Value")
@@ -1001,26 +1023,35 @@ def _health_filter_sample_value(filter_value) -> tuple[Optional[str], Optional[i
     if not isinstance(templates, list):
         return None, None, False
 
+    malformed_legacy_value_row = False
+    type_value: Optional[str] = None
+    type_operator: Optional[int] = None
     for template in templates:
-        if not isinstance(template, dict) or template.get("Property") != "Value":
+        if not isinstance(template, dict):
             continue
+        prop = template.get("Property")
+        if prop == "Value":
+            malformed_legacy_value_row = True
+            continue
+        if prop != "Type":
+            continue
+        type_operator = template.get("Operator")
+        if template.get("Bounded") is not True or template.get("Removable") is not False:
+            return None, type_operator, True
         values = template.get("Values")
         if not isinstance(values, dict):
-            return None, template.get("Operator"), True
-        for key in ("String", "Enumeration"):
-            value = values.get(key)
-            if isinstance(value, str):
-                return value, template.get("Operator"), False
-            if isinstance(value, dict):
-                inner_value = value.get("Value")
-                if isinstance(inner_value, dict):
-                    string_value = inner_value.get("string")
-                    if isinstance(string_value, str):
-                        return string_value, template.get("Operator"), False
-                elif isinstance(inner_value, str):
-                    return inner_value, template.get("Operator"), False
-        return None, template.get("Operator"), True
-    return None, None, False
+            return None, type_operator, True
+        enum_state = values.get("Enumeration")
+        if not isinstance(enum_state, dict):
+            return None, type_operator, True
+        if enum_state.get("WFSerializationType") != "WFStringSubstitutableState":
+            return None, type_operator, True
+        enum_value = enum_state.get("Value")
+        if isinstance(enum_value, str) and enum_value:
+            type_value = enum_value
+            continue
+        return None, type_operator, True
+    return type_value, type_operator, malformed_legacy_value_row
 
 
 def _lang_value_is_code(value) -> bool:
@@ -2256,7 +2287,7 @@ def validate(
         if ident == HEALTH_FIND_SAMPLES_ACTION:
             if "WFHealthQuantityType" in params:
                 errors.append(
-                    f"Find Health Samples uses obsolete WFHealthQuantityType at index {idx}; put the sample kind in a Value filter row"
+                    f"Find Health Samples uses obsolete WFHealthQuantityType at index {idx}; put the sample kind in a non-removable Type filter row"
                 )
             _validate_health_filter_template(
                 params.get("WFContentItemFilter"),
@@ -2264,22 +2295,22 @@ def validate(
                 idx=idx,
                 errors=errors,
             )
-            health_type, type_operator, malformed_type = _health_filter_sample_value(
+            health_type, type_operator, malformed_type = _health_filter_type_value(
                 params.get("WFContentItemFilter")
             )
             if malformed_type or _token_param_is_empty(health_type):
-                errors.append(f"Find Health Samples missing Value filter at index {idx}")
+                errors.append(f"Find Health Samples missing or malformed Type filter at index {idx}")
             elif type_operator != 4:
                 errors.append(
-                    f"Find Health Samples Value filter must use operator 4 at index {idx}"
+                    f"Find Health Samples Type filter must use operator 4 at index {idx}"
                 )
             elif (
                 isinstance(health_type, str)
-                and HEALTH_REFERENCE_SETS["quantity_types"]
-                and health_type not in HEALTH_REFERENCE_SETS["quantity_types"]
+                and HEALTH_REFERENCE_SETS["find_sample_types"]
+                and health_type not in HEALTH_REFERENCE_SETS["find_sample_types"]
             ):
                 errors.append(
-                    f"Find Health Samples uses unknown Value filter value '{health_type}' at index {idx}"
+                    f"Find Health Samples uses unknown Type filter value '{health_type}' at index {idx}"
                 )
             if "WFContentItemLimitEnabled" in params and not isinstance(
                 params.get("WFContentItemLimitEnabled"), bool

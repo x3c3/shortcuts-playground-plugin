@@ -1,22 +1,33 @@
 # Autoresearch Loop Changelog
 
+## Date: April 28, 2026 — 1.7.3 HealthKit Type picker correction
+
+### Summary
+
+Corrected the 1.7.2 Find Health Samples fix after comparing a shortcut containing a manually created working action and a plugin-generated broken action. The sample-kind row must be `Property = Type` with `Values.Enumeration.WFSerializationType = WFStringSubstitutableState`, `Bounded = true`, and `Removable = false`. The generated `Property = Value` / `Values.String = Step Count` row imports as an editable text filter, not the Health type picker.
+
+### Fixes Applied
+
+- Updated HealthKit docs and examples to use a locked `Type is <Health picker label>` row for Find Health Samples.
+- Updated `validate_shortcut.py` to reject legacy `Value` string rows and validate the `Type` enumeration state.
+- Added `observed_find_samples_labels` to the generated HealthKit reference so `HKQuantityTypeIdentifierStepCount` uses `Steps` for Find Health Samples, while other Health action contexts can still use `Step Count`.
+- Updated regression fixtures so the exact generated failure shape is invalid.
+
 ## Date: April 28, 2026 — 1.7.2 HealthKit Value filter correction
 
 ### Summary
 
-Corrected the Find Health Samples predicate row discovered by comparing a two-action shortcut with one manually repaired action and one generated action. The sample-kind row must use `Property = Value`; using `Property = Type` preserves the stored sample label but imports as an empty red field until the user manually selects `Value`.
+Superseded by 1.7.3. This release incorrectly changed the Find Health Samples sample-kind row to `Property = Value`, which imported as an editable text filter rather than the Health type picker.
 
 ### Fixes Applied
 
-- Updated HealthKit docs and examples to use `Value is <Health sample type>` for Find Health Samples.
-- Updated `validate_shortcut.py` to reject missing/malformed `Value` filter rows and no longer accept `Type` rows for the sample-kind predicate.
-- Updated `test_wiring_regressions.py`, generated reference metadata, and the reference generator to use `Value` rows.
+- The 1.7.3 release restores the correct `Type` row and changes the underlying value state to the observed enumeration shape.
 
 ## Date: April 27, 2026 — 1.7.1 HealthKit filter correction
 
 ### Summary
 
-Corrected Find Health Samples guidance after comparing a generated Health shortcut against a manually created iOS action. The previously documented top-level `WFHealthQuantityType` key is not honored by the iOS Shortcuts editor. This release moved the sample kind into `WFContentItemFilter`; 1.7.2 later corrected the row property from `Type` to `Value`.
+Corrected Find Health Samples guidance after comparing a generated Health shortcut against a manually created iOS action. The previously documented top-level `WFHealthQuantityType` key is not honored by the iOS Shortcuts editor. This release moved the sample kind into `WFContentItemFilter`; 1.7.3 later corrected the row value state to the locked `Type` enumeration shape.
 
 ### Fixes Applied
 
@@ -69,7 +80,7 @@ Added HealthKit support from anonymized iOS Shortcuts XML exports, iPhoneOS 26.2
 - `WFQuantitySampleAdditionalQuantity` can be unit-only.
 - Category samples can retain the count-based quantity scaffold even when the editor hides the Value row.
 - Category picker values use `WFCategorySampleEnumeration`; observed example: `Cervical Mucus Quality` with `Dry`.
-- `is.workflow.actions.filter.health.quantity` uses `WFContentPredicateTableTemplate`; later corrected in 1.7.2 to require the sample kind as a `Value is ...` predicate row plus date filters such as `Start Date` + operator `1002` for "is today".
+- `is.workflow.actions.filter.health.quantity` uses `WFContentPredicateTableTemplate`; later corrected in 1.7.3 to require the sample kind as a locked `Type is ...` enumeration row plus date filters such as `Start Date` + operator `1002` for "is today".
 - `is.workflow.actions.properties.health.quantity` accepts `Type`, `Value`, `Unit`, `Start Date`, `End Date`, `Duration`, `Source`, and `Name`.
 
 ## Date: March 26, 2026

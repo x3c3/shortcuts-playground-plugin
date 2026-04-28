@@ -15,7 +15,7 @@
       "coverage": [
         "is.workflow.actions.filter.health.quantity",
         "WFContentItemFilter",
-        "Value filter row",
+        "Type filter row",
         "WFContentItemLimitEnabled"
       ],
       "evidence_id": "find_health_samples_quantity_filter"
@@ -1247,6 +1247,9 @@
     },
     {
       "availability": "API_AVAILABLE(ios(8.0), watchos(2.0), macCatalyst(13.0), macos(13.0), visionos(1.0))",
+      "observed_find_samples_labels": [
+        "Steps"
+      ],
       "observed_shortcuts_labels": [
         "Step Count"
       ],

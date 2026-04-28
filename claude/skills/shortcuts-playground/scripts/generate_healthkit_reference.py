@@ -47,6 +47,10 @@ OBSERVED_SHORTCUTS_LABELS = {
     "HKQuantityTypeIdentifierStepCount": ["Step Count"],
 }
 
+OBSERVED_FIND_SAMPLES_LABELS = {
+    "HKQuantityTypeIdentifierStepCount": ["Steps"],
+}
+
 ACTIONKIT_HEALTH_CONSTANTS = Path(
     "/System/Library/PrivateFrameworks/ActionKit.framework/Versions/A/Resources/"
     "WFHealthKitConstants.plist"
@@ -69,7 +73,7 @@ BUNDLED_XML_EVIDENCE = [
         "coverage": [
             "is.workflow.actions.filter.health.quantity",
             "WFContentItemFilter",
-            "Value filter row",
+            "Type filter row",
             "WFContentItemLimitEnabled",
         ],
     },
@@ -207,6 +211,8 @@ def parse_types(header: Path) -> dict[str, list[dict[str, str]]]:
         }
         if symbol in OBSERVED_SHORTCUTS_LABELS:
             row["observed_shortcuts_labels"] = OBSERVED_SHORTCUTS_LABELS[symbol]
+        if symbol in OBSERVED_FIND_SAMPLES_LABELS:
+            row["observed_find_samples_labels"] = OBSERVED_FIND_SAMPLES_LABELS[symbol]
         out[bucket].append(row)
     return out
 
