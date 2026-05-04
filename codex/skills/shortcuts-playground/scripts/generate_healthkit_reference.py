@@ -48,6 +48,9 @@ OBSERVED_SHORTCUTS_LABELS = {
 }
 
 OBSERVED_FIND_SAMPLES_LABELS = {
+    "HKCategoryTypeIdentifierSleepAnalysis": ["Sleep"],
+    "HKQuantityTypeIdentifierActiveEnergyBurned": ["Active Calories"],
+    "HKQuantityTypeIdentifierAppleExerciseTime": ["Exercise Minutes"],
     "HKQuantityTypeIdentifierStepCount": ["Steps"],
 }
 

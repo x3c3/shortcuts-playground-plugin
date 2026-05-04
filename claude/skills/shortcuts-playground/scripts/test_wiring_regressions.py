@@ -880,6 +880,110 @@ def make_health_log_unit_valid(case_name: str, idx: int, unit: str) -> dict:
     return root_plist(case_name, actions)
 
 
+def make_health_find_invalid_type_label(case_name: str, label: str) -> dict:
+    prompt = f"HealthKit invalid Find Health Samples label {label}"
+    actions = base_actions(case_name, prompt)
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-find-health"),
+                "WFContentItemFilter": health_filter_template(label),
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_sleep_duration_divide_60_invalid(case_name: str) -> dict:
+    prompt = "HealthKit invalid sleep duration conversion"
+    actions = base_actions(case_name, prompt)
+    number_uuid = seeded_uuid(f"{case_name}-sleep-total-number")
+    divide_uuid = seeded_uuid(f"{case_name}-sleep-divide")
+    round_uuid = seeded_uuid(f"{case_name}-sleep-round")
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.number",
+                "WFWorkflowActionParameters": {
+                    "UUID": number_uuid,
+                    "WFNumberActionNumber": 0,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-set-sleep-total"),
+                    "WFVariableName": "Sleep Total",
+                    "WFInput": attachment_action_output(number_uuid, "Number"),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.math",
+                "WFWorkflowActionParameters": {
+                    "UUID": divide_uuid,
+                    "WFInput": attachment_variable("Sleep Total"),
+                    "WFMathOperation": "÷",
+                    "WFMathOperand": "60",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.round",
+                "WFWorkflowActionParameters": {
+                    "UUID": round_uuid,
+                    "WFInput": attachment_action_output(divide_uuid, "Calculation Result"),
+                    "WFRoundMode": "Normal",
+                    "WFRoundTo": "Tenths",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-set-sleep-hours"),
+                    "WFVariableName": "Sleep Hours",
+                    "WFInput": attachment_action_output(round_uuid, "Rounded Number"),
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions)
+
+
+def make_health_distance_divide_1000_invalid(case_name: str) -> dict:
+    prompt = "HealthKit invalid distance conversion"
+    actions = base_actions(case_name, prompt)
+    number_uuid = seeded_uuid(f"{case_name}-distance-total-number")
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.number",
+                "WFWorkflowActionParameters": {
+                    "UUID": number_uuid,
+                    "WFNumberActionNumber": 0,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-set-distance-total"),
+                    "WFVariableName": "Distance Total",
+                    "WFInput": attachment_action_output(number_uuid, "Number"),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.math",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-distance-divide"),
+                    "WFInput": attachment_variable("Distance Total"),
+                    "WFMathOperation": "÷",
+                    "WFMathOperand": "1000",
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions)
+
+
 def make_health_workout_valid(case_name: str, idx: int, workout_type: str) -> dict:
     prompt = f"HealthKit workout valid case {idx}"
     actions = base_actions(case_name, prompt)
@@ -1135,6 +1239,12 @@ def build_cases() -> list[Case]:
         case_name = f"ZZ-Health-Find-Detail-Valid-{idx + 1:03d}"
         cases.append(Case("healthkit", case_name, make_health_find_detail_valid(case_name, idx, label), True))
 
+    # Find Health Samples also supports category types such as Sleep.
+    for idx, row in enumerate(category_types):
+        label = health_find_sample_label(row) or f"Category {idx}"
+        case_name = f"ZZ-Health-Find-Detail-Category-Valid-{idx + 1:03d}"
+        cases.append(Case("healthkit", case_name, make_health_find_detail_valid(case_name, idx, label), True))
+
     if quantity_types:
         case_name = "ZZ-Health-Find-Detail-Variable-Valid"
         label = health_find_sample_label(quantity_types[0]) or "Steps"
@@ -1217,6 +1327,46 @@ def build_cases() -> list[Case]:
         case_name = f"ZZ-Health-Invalid-{idx + 1:02d}"
         plist, expected = make_health_invalid(case_name, idx)
         cases.append(Case("healthkit", case_name, plist, False, expected))
+
+    stale_find_labels = [
+        "Sleep Analysis",
+        "Active Energy",
+        "Apple Exercise Time",
+        "Exercise Time",
+    ]
+    for idx, label in enumerate(stale_find_labels):
+        case_name = f"ZZ-Health-Find-Stale-Label-Invalid-{idx + 1:02d}"
+        cases.append(
+            Case(
+                "healthkit",
+                case_name,
+                make_health_find_invalid_type_label(case_name, label),
+                False,
+                "unknown Type filter value",
+            )
+        )
+
+    case_name = "ZZ-Health-Sleep-Duration-Divide-60-Invalid"
+    cases.append(
+        Case(
+            "healthkit",
+            case_name,
+            make_health_sleep_duration_divide_60_invalid(case_name),
+            False,
+            "Sleep duration math divides by 60",
+        )
+    )
+
+    case_name = "ZZ-Health-Distance-Divide-1000-Invalid"
+    cases.append(
+        Case(
+            "healthkit",
+            case_name,
+            make_health_distance_divide_1000_invalid(case_name),
+            False,
+            "Health distance math divides",
+        )
+    )
 
     return cases
 

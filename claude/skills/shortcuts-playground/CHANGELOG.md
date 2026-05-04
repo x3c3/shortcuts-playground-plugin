@@ -1,5 +1,19 @@
 # Autoresearch Loop Changelog
 
+## Date: April 30, 2026 — 1.7.4 Health dashboard labels and duration math
+
+### Summary
+
+Updated Health dashboard guidance after comparing a generated HealthDash shortcut with a partially repaired copy. Find Health Samples needs additional action-specific picker labels: `Sleep`, `Active Calories`, and `Exercise Minutes`. Sleep duration values should not be divided by `60` and labeled as hours.
+
+### Fixes Applied
+
+- Added observed Find Health Samples labels for Sleep, Active Calories, and Exercise Minutes.
+- Updated the validator to accept category types such as Sleep in Find Health Samples and reject stale labels such as `Sleep Analysis`, `Active Energy`, `Apple Exercise Time`, and `Exercise Time`.
+- Added validation for Sleep duration math that divides by `60` and stores/reports the result as hours; generated shortcuts should divide by `3600` for decimal hours.
+- Documented safer Health dashboard guidance for Sleep duration, last-night ranges, and Walking + Running Distance unit conversion.
+- Added validation for the generated `Distance Total ÷ 1000` pattern so Health distances are not converted to zero by assuming meter inputs.
+
 ## Date: April 28, 2026 — 1.7.3 HealthKit Type picker correction
 
 ### Summary
@@ -35,6 +49,18 @@ Corrected Find Health Samples guidance after comparing a generated Health shortc
 - Updated `validate_shortcut.py` to reject obsolete `WFHealthQuantityType` and require a sample-kind predicate row.
 - Updated `test_wiring_regressions.py` so valid Health sample find/detail cases use `WFContentItemFilter` sample-kind rows and invalid cases catch missing, malformed, or unknown sample-kind rows.
 - Updated `data/healthkit-ios26.2-reference.json` metadata so the packaged evidence no longer advertises the obsolete key.
+
+## Date: April 26, 2026 — Codex package
+
+### Summary
+
+Adapted the Shortcuts Playground skill for Codex plugin packaging.
+
+### Fixes Applied
+
+- Removed Claude-only slash command, specialized agent, hook, wrapper-bin, and `userConfig` assumptions from the Codex skill entry point.
+- Added direct script invocation instructions for icon resolution, validation, and archive/sign.
+- Added `scripts/sign_shortcut.sh` as the Codex signing helper.
 
 ## Date: April 26, 2026 — 1.6.1 follow-up
 

@@ -113,6 +113,8 @@ The `is today` operator (1002) does NOT require Values:
 
 Verified from a manually created iOS Shortcuts XML example and generated shortcut failures. **Find Health Samples** uses the same `WFContentPredicateTableTemplate` wrapper, but the Health sample kind is a locked `Type` predicate row backed by an enumeration state. Do not use top-level `WFHealthQuantityType`, and do not use a `Value` predicate row with `Values.String`; current iOS Shortcuts renders that as an editable text filter instead of the Health type picker.
 
+Use observed Find Health Samples picker labels. Examples: `Steps`, `Sleep`, `Walking + Running Distance`, `Active Calories`, and `Exercise Minutes`. Do not use SDK-derived labels such as `Sleep Analysis` or `Apple Exercise Time`.
+
 ```xml
 <key>WFContentItemFilter</key>
 <dict>

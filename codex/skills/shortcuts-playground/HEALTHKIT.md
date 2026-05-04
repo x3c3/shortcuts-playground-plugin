@@ -24,7 +24,7 @@ Identifier: `is.workflow.actions.filter.health.quantity`
 Required parameters:
 
 - `UUID`
-- `WFContentItemFilter`: `WFContentPredicateTableTemplate` containing a non-removable `Type` predicate row. Use `Values.Enumeration` with `WFSerializationType = WFStringSubstitutableState` and the Find Health Samples picker label, for example `Caffeine`, `Steps`, `Walking + Running Distance`.
+- `WFContentItemFilter`: `WFContentPredicateTableTemplate` containing a non-removable `Type` predicate row. Use `Values.Enumeration` with `WFSerializationType = WFStringSubstitutableState` and the Find Health Samples picker label, for example `Caffeine`, `Steps`, `Sleep`, `Walking + Running Distance`, or `Exercise Minutes`.
 
 Optional:
 
@@ -93,6 +93,16 @@ Observed filter shape:
 `Operator` `4` is `is` for the `Type` row. `Operator` `1002` is the observed `Start Date is today` row; manual iOS exports include `Values.Number = "7"` and `Values.Unit = 16` on that row. Use `WFActionParameterFilterPrefix = 1` for All when combining sample-kind and date rows.
 
 Output name observed in downstream wiring: `Health Samples`.
+
+### Health Summary Math
+
+When building dashboards that sum Health samples, do not infer units from HealthKit SDK names. Use the Shortcuts picker labels and the details returned by Shortcuts:
+
+- **Exercise**: the Find Health Samples picker label is `Exercise Minutes`, not `Apple Exercise Time` or `Exercise Time`.
+- **Sleep**: the Find Health Samples picker label is `Sleep`, not `Sleep Analysis`. Sleep is a category sample, and `Duration` values may display as clock-style durations such as `28:09`, `3:31`, or `1:06:52`.
+- **Sleep duration math**: `Get Details of Health Sample` → `Duration` should be treated as a duration. When that value is coerced through Math, treat it as seconds. Divide by `3600` for decimal hours, or divide by `60` and label the result as minutes. Never divide sleep duration by `60` and label the result as hours.
+- **Sleep date ranges**: for "last night" summaries, do not use only `Start Date is today`; sleep often starts before midnight. Prefer an explicit last-night range (for example, yesterday evening through this morning) or tell the user the range needs confirmation.
+- **Walking + Running Distance**: do not assume `Value` is meters and divide by `1000`. Shortcuts returns `Value` in the action's displayed Health unit. Sum values directly, or use Convert Measurement with an explicit source unit and target unit.
 
 ### Get Details of Health Sample
 
@@ -294,7 +304,7 @@ Generated shape:
 - 84 workout activity types.
 - 46 ActionKit Health unit strings.
 
-Use `shortcut_label_guess` as a good default, but prefer action-specific observed labels when present. For Find Health Samples, prefer `observed_find_samples_labels`; for example, `HKQuantityTypeIdentifierStepCount` is `Steps` in the Find Health Samples picker, while other Health action contexts may display `Step Count`. Some labels differ by action context: `HKQuantityTypeIdentifierActiveEnergyBurned` has been observed as both `Active Energy Burned` and `Active Energy`.
+Use `shortcut_label_guess` as a fallback, but prefer action-specific observed labels when present. For Find Health Samples, prefer `observed_find_samples_labels`; for example, `HKQuantityTypeIdentifierStepCount` is `Steps`, `HKCategoryTypeIdentifierSleepAnalysis` is `Sleep`, `HKQuantityTypeIdentifierActiveEnergyBurned` is `Active Calories`, and `HKQuantityTypeIdentifierAppleExerciseTime` is `Exercise Minutes` in the Find Health Samples picker. Other Health action contexts may use labels such as `Step Count` or `Active Energy Burned`.
 
 Known bundled label override:
 

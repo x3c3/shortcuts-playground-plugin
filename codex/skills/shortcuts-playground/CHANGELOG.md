@@ -1,5 +1,19 @@
 # Autoresearch Loop Changelog
 
+## Date: April 30, 2026 — 1.7.4 Health dashboard labels and duration math
+
+### Summary
+
+Updated Health dashboard guidance after comparing a generated HealthDash shortcut with a partially repaired copy. Find Health Samples needs additional action-specific picker labels: `Sleep`, `Active Calories`, and `Exercise Minutes`. Sleep duration values should not be divided by `60` and labeled as hours.
+
+### Fixes Applied
+
+- Added observed Find Health Samples labels for Sleep, Active Calories, and Exercise Minutes.
+- Updated the validator to accept category types such as Sleep in Find Health Samples and reject stale labels such as `Sleep Analysis`, `Active Energy`, `Apple Exercise Time`, and `Exercise Time`.
+- Added validation for Sleep duration math that divides by `60` and stores/reports the result as hours; generated shortcuts should divide by `3600` for decimal hours.
+- Documented safer Health dashboard guidance for Sleep duration, last-night ranges, and Walking + Running Distance unit conversion.
+- Added validation for the generated `Distance Total ÷ 1000` pattern so Health distances are not converted to zero by assuming meter inputs.
+
 ## Date: April 28, 2026 — 1.7.3 HealthKit Type picker correction
 
 ### Summary

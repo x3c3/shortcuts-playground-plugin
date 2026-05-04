@@ -2,6 +2,15 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.7.4] — 2026-04-30
+
+### Fixed — Health dashboard labels and duration math
+
+- Added observed Find Health Samples labels for `Sleep`, `Active Calories`, and `Exercise Minutes`.
+- Updated Claude Code and Codex validators to accept category types such as Sleep in Find Health Samples and reject stale labels such as `Sleep Analysis`, `Active Energy`, `Apple Exercise Time`, and `Exercise Time`.
+- Added guidance and regression coverage for Sleep duration math: divide by `3600` for decimal hours, not `60`.
+- Documented safer Walking + Running Distance unit handling and validator coverage for the generated `Distance Total ÷ 1000` pattern.
+
 ## [1.7.3] — 2026-04-28
 
 ### Fixed — Find Health Samples Type picker

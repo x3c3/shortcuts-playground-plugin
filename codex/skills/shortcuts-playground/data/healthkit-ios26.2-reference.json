@@ -276,6 +276,9 @@
     },
     {
       "availability": "API_AVAILABLE(ios(8.0), watchos(2.0), macCatalyst(13.0), macos(13.0), visionos(1.0))",
+      "observed_find_samples_labels": [
+        "Sleep"
+      ],
       "sdk_suffix": "SleepAnalysis",
       "shortcut_label_guess": "Sleep Analysis",
       "symbol": "HKCategoryTypeIdentifierSleepAnalysis",
@@ -1045,6 +1048,9 @@
         "Active Energy Burned",
         "Active Energy"
       ],
+      "observed_find_samples_labels": [
+        "Active Calories"
+      ],
       "sdk_suffix": "ActiveEnergyBurned",
       "shortcut_label_guess": "Active Energy Burned",
       "symbol": "HKQuantityTypeIdentifierActiveEnergyBurned",
@@ -1052,6 +1058,9 @@
     },
     {
       "availability": "API_AVAILABLE(ios(9.3), watchos(2.2), macCatalyst(13.0), macos(13.0), visionos(1.0))",
+      "observed_find_samples_labels": [
+        "Exercise Minutes"
+      ],
       "sdk_suffix": "AppleExerciseTime",
       "shortcut_label_guess": "Apple Exercise Time",
       "symbol": "HKQuantityTypeIdentifierAppleExerciseTime",

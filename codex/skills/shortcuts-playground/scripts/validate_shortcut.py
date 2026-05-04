@@ -398,6 +398,7 @@ def _load_healthkit_reference_sets() -> dict[str, set[str]]:
     quantity_labels = labels_from_rows(payload.get("quantity_types"))
     category_labels = labels_from_rows(payload.get("category_types"))
     out["find_sample_types"].update(find_sample_labels_from_rows(payload.get("quantity_types")))
+    out["find_sample_types"].update(find_sample_labels_from_rows(payload.get("category_types")))
     out["quantity_types"].update(quantity_labels)
     out["sample_types"].update(quantity_labels | category_labels)
     out["workouts"].update(labels_from_rows(payload.get("workout_activity_types")))
@@ -1161,6 +1162,22 @@ def _math_operand_has_reference(value) -> bool:
     return False
 
 
+def _math_operand_literal_string(value) -> Optional[str]:
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    if isinstance(value, dict):
+        val = value.get("Value")
+        if isinstance(val, dict):
+            string_value = val.get("string")
+            if isinstance(string_value, str):
+                stripped = string_value.strip()
+                return stripped or None
+    return None
+
+
 def iter_aggrandizements(obj):
     """Yield all Aggrandizement dicts found recursively in a parameter tree."""
     if isinstance(obj, dict):
@@ -1198,6 +1215,8 @@ def validate(
     cents_vars: set[str] = set()
     divide_by_100_vars: set[str] = set()
     divide_by_100_uuids: set[str] = set()
+    sleep_duration_divide_by_60_uuids: set[str] = set()
+    sleep_duration_divide_by_60_round_uuids: set[str] = set()
     cents_context_steps = 0
     unit_text_found = False
     has_measurement_convert = False
@@ -1592,6 +1611,18 @@ def validate(
                     location_source_vars.add(name)
                 if health_sample_source:
                     health_sample_source_vars.add(name)
+                if (
+                    "hour" in name.lower()
+                    and any(
+                        source_uuid in sleep_duration_divide_by_60_uuids
+                        or source_uuid in sleep_duration_divide_by_60_round_uuids
+                        for source_uuid in out_uuids
+                    )
+                ):
+                    errors.append(
+                        f"Sleep duration math divides by 60 but stores hours in '{name}' at index {idx}; "
+                        "Health Duration math is seconds, so divide by 3600 for decimal hours or label the result as minutes"
+                    )
 
         if ident == "is.workflow.actions.getvariable":
             wfvar = params.get("WFVariable")
@@ -2579,32 +2610,6 @@ def validate(
             var_name = _extract_input_variable_name(wfinput)
             if var_name and var_name not in defined_vars and var_name not in BUILTIN_VARIABLES:
                 errors.append(f"Math input references undefined variable '{var_name}' at index {idx}")
-            op = params.get("WFMathOperation")
-            operand = params.get("WFMathOperand")
-            is_100 = False
-            if isinstance(operand, int) and operand == 100:
-                is_100 = True
-            elif isinstance(operand, dict):
-                val = operand.get("Value")
-                if isinstance(val, dict):
-                    if isinstance(val.get("string"), str) and val.get("string").strip() == "100":
-                        is_100 = True
-            if op == "/" and is_100:
-                divide_by_100_uuids.add(uuid)
-                input_name = var_name
-                if input_name is None and isinstance(wfinput, dict):
-                    val = wfinput.get("Value")
-                    if isinstance(val, dict) and val.get("Type") == "ActionOutput":
-                        out_uuid = val.get("OutputUUID")
-                        if out_uuid in uuid_to_var_name:
-                            input_name = uuid_to_var_name[out_uuid]
-                        else:
-                            output_name = val.get("OutputName")
-                            if isinstance(output_name, str):
-                                input_name = output_name
-                if input_name:
-                    divide_by_100_vars.add(input_name)
-            # If operating on cents with literal 100, must use divide
             input_name = var_name
             if input_name is None and isinstance(wfinput, dict):
                 val = wfinput.get("Value")
@@ -2616,6 +2621,40 @@ def validate(
                         output_name = val.get("OutputName")
                         if isinstance(output_name, str):
                             input_name = output_name
+            op = params.get("WFMathOperation")
+            operand = params.get("WFMathOperand")
+            literal_operand = _math_operand_literal_string(operand)
+            if (
+                op in {"/", "÷"}
+                and literal_operand == "60"
+                and input_name
+                and "sleep" in input_name.lower()
+                and uuid
+            ):
+                sleep_duration_divide_by_60_uuids.add(uuid)
+            if (
+                op in {"/", "÷"}
+                and literal_operand == "1000"
+                and input_name
+                and "distance" in input_name.lower()
+            ):
+                errors.append(
+                    f"Health distance math divides '{input_name}' by 1000 at index {idx}; "
+                    "do not assume Walking + Running Distance values are meters. Sum the Health Value directly or use Convert Measurement with an explicit source unit"
+                )
+            is_100 = False
+            if isinstance(operand, int) and operand == 100:
+                is_100 = True
+            elif isinstance(operand, dict):
+                val = operand.get("Value")
+                if isinstance(val, dict):
+                    if isinstance(val.get("string"), str) and val.get("string").strip() == "100":
+                        is_100 = True
+            if op == "/" and is_100:
+                divide_by_100_uuids.add(uuid)
+                if input_name:
+                    divide_by_100_vars.add(input_name)
+            # If operating on cents with literal 100, must use divide
             if is_100 and input_name and "cents" in input_name.lower() and op not in {"/", "÷"}:
                 errors.append(f"Math uses {op} with 100 on cents; must divide by 100 at index {idx}")
             if is_100 and cents_context_steps > 0 and op not in {"/", "÷"}:
@@ -2626,6 +2665,9 @@ def validate(
             if not wfinput:
                 errors.append(f"Round Number missing WFInput at index {idx}")
             else:
+                for out_uuid in _input_action_output_uuids(wfinput):
+                    if out_uuid in sleep_duration_divide_by_60_uuids and uuid:
+                        sleep_duration_divide_by_60_round_uuids.add(uuid)
                 used_divide = False
                 for out_uuid in _input_action_output_uuids(wfinput):
                     if out_uuid in divide_by_100_uuids:
