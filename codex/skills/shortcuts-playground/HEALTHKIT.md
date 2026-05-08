@@ -304,7 +304,7 @@ Generated shape:
 - 84 workout activity types.
 - 46 ActionKit Health unit strings.
 
-Use `shortcut_label_guess` as a fallback, but prefer action-specific observed labels when present. For Find Health Samples, prefer `observed_find_samples_labels`; for example, `HKQuantityTypeIdentifierStepCount` is `Steps`, `HKCategoryTypeIdentifierSleepAnalysis` is `Sleep`, `HKQuantityTypeIdentifierActiveEnergyBurned` is `Active Calories`, and `HKQuantityTypeIdentifierAppleExerciseTime` is `Exercise Minutes` in the Find Health Samples picker. Other Health action contexts may use labels such as `Step Count` or `Active Energy Burned`.
+Use `shortcut_label_guess` as a fallback, but prefer action-specific observed labels when present. For Find Health Samples, prefer `observed_find_samples_labels`; for example, `HKQuantityTypeIdentifierStepCount` is `Steps`, `HKCategoryTypeIdentifierSleepAnalysis` is `Sleep`, `HKQuantityTypeIdentifierActiveEnergyBurned` is `Active Calories`, and `HKQuantityTypeIdentifierAppleExerciseTime` is `Exercise Minutes` in the Find Health Samples picker. Other Health action contexts may use labels such as `Step Count`; for active energy burned, use `Active Calories`, not `Active Energy` or `Active Energy Burned`.
 
 Known bundled label override:
 

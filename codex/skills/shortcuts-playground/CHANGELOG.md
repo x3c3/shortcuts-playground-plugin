@@ -1,5 +1,17 @@
 # Autoresearch Loop Changelog
 
+## Date: May 8, 2026 — 1.0 public launch reset and Active Calories correction
+
+### Summary
+
+Reset plugin metadata to `1.0` for public launch and corrected the Active Energy Burned HealthKit label to Shortcuts' `Active Calories` wording.
+
+### Fixes Applied
+
+- Updated HealthKit reference metadata so `HKQuantityTypeIdentifierActiveEnergyBurned` resolves to `Active Calories`.
+- Updated guidance to reject `Active Energy` and `Active Energy Burned` in HealthKit actions.
+- Added validator regression coverage for stale active-energy labels in Find Health Samples and Log Health Sample.
+
 ## Date: May 5, 2026 — Set Name action identity correction
 
 ### Summary

@@ -26,7 +26,7 @@ TYPE_PREFIXES = {
 }
 
 LABEL_OVERRIDES = {
-    "ActiveEnergyBurned": "Active Energy Burned",
+    "ActiveEnergyBurned": "Active Calories",
     "DietaryCaffeine": "Caffeine",
     "DistanceWalkingRunning": "Walking + Running Distance",
     "FlightsClimbed": "Flights Climbed",
@@ -39,7 +39,7 @@ OBSERVED_SHORTCUTS_LABELS = {
     "HKCategoryTypeIdentifierBloating": ["Bloating"],
     "HKCategoryTypeIdentifierCervicalMucusQuality": ["Cervical Mucus Quality"],
     "HKCategoryTypeIdentifierGeneralizedBodyAche": ["Body and Muscle Ache"],
-    "HKQuantityTypeIdentifierActiveEnergyBurned": ["Active Energy Burned", "Active Energy"],
+    "HKQuantityTypeIdentifierActiveEnergyBurned": ["Active Calories"],
     "HKQuantityTypeIdentifierBodyMassIndex": ["Body Mass Index"],
     "HKQuantityTypeIdentifierDietaryCaffeine": ["Caffeine"],
     "HKQuantityTypeIdentifierDistanceWalkingRunning": ["Walking + Running Distance"],

@@ -74,6 +74,11 @@ if [ "$MODE" != "anyone" ] && [ "$MODE" != "people-who-know-me" ]; then
   exit 64
 fi
 
+if ! command -v shortcuts >/dev/null 2>&1; then
+  printf 'Apple shortcuts CLI not found on PATH; signing requires macOS Shortcuts.\n' >&2
+  exit 127
+fi
+
 if [ -z "$NAME" ]; then
   BASENAME="$(basename "$INPUT")"
   NAME="${BASENAME%.*}"

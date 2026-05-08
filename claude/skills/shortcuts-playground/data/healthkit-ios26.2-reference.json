@@ -1045,14 +1045,13 @@
     {
       "availability": "API_AVAILABLE(ios(8.0), watchos(2.0), macCatalyst(13.0), macos(13.0), visionos(1.0))",
       "observed_shortcuts_labels": [
-        "Active Energy Burned",
-        "Active Energy"
+        "Active Calories"
       ],
       "observed_find_samples_labels": [
         "Active Calories"
       ],
       "sdk_suffix": "ActiveEnergyBurned",
-      "shortcut_label_guess": "Active Energy Burned",
+      "shortcut_label_guess": "Active Calories",
       "symbol": "HKQuantityTypeIdentifierActiveEnergyBurned",
       "unit_and_aggregation": "kcal, Cumulative"
     },

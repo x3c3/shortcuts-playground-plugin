@@ -2,6 +2,14 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## [1.0] — 2026-05-08
+
+### Fixed — public launch reset and HealthKit active calories
+
+- Reset the Claude Code and Codex plugin manifests and marketplace metadata to version `1.0`.
+- Updated HealthKit guidance, reference data, and validator regressions so Active Energy Burned uses the Shortcuts label `Active Calories`.
+- Rejected stale HealthKit labels such as `Active Energy` and `Active Energy Burned` in generated actions.
+
 ## [1.7.5] — 2026-05-04
 
 ### Added — URL schemes, JavaScript webpage rules, and date recipes
@@ -107,10 +115,10 @@ Four remaining items from the audit were intentionally deferred rather than patc
 
 ## [1.5.2] — 2026-04-14
 
-### Added — internal release packaging for the MacStories team
+### Added — marketplace packaging
 
-- **`.claude-plugin/marketplace.json`** reinstated in the plugin repo. v1.2.0 had removed it for eventual Anthropic submission, but for the internal MacStories release the co-located manifest is the pragmatic choice: one GitHub URL, one `claude plugin marketplace add` call, one `claude plugin install` command. The marketplace entry points at `./` as the plugin source so the repo serves both roles (marketplace + plugin) from the same directory.
-- **`INSTALL.md`** in the repo root. A single-page install guide for the team covering prerequisites (macOS, Claude Code, Python 3.10+, GitHub access), the two install commands, self-test verification, output directory configuration, day-to-day usage for build and remix, updating, uninstalling, and common troubleshooting paths. Written so a MacStories reader can install the plugin and generate their first shortcut in under five minutes.
+- **`.claude-plugin/marketplace.json`** reinstated in the plugin repo. The co-located manifest allows one GitHub URL, one `claude plugin marketplace add` call, and one `claude plugin install` command. The marketplace entry points at `./` as the plugin source so the repo serves both roles (marketplace + plugin) from the same directory.
+- **`INSTALL.md`** in the repo root. A single-page install guide covering prerequisites (macOS, Claude Code, Python 3.10+, GitHub access), the two install commands, self-test verification, output directory configuration, day-to-day usage for build and remix, updating, uninstalling, and common troubleshooting paths.
 
 ### Unchanged since v1.5.1
 - Agent prompts, validator logic, hook behavior, bin wrappers, skill content — all v1.5.1 as verified.

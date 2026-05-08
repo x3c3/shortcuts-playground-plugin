@@ -1787,6 +1787,7 @@ def build_cases() -> list[Case]:
     stale_find_labels = [
         "Sleep Analysis",
         "Active Energy",
+        "Active Energy Burned",
         "Apple Exercise Time",
         "Exercise Time",
     ]
@@ -1799,6 +1800,22 @@ def build_cases() -> list[Case]:
                 make_health_find_invalid_type_label(case_name, label),
                 False,
                 "unknown Type filter value",
+            )
+        )
+
+    stale_log_labels = [
+        "Active Energy",
+        "Active Energy Burned",
+    ]
+    for idx, label in enumerate(stale_log_labels):
+        case_name = f"ZZ-Health-Log-Stale-Label-Invalid-{idx + 1:02d}"
+        cases.append(
+            Case(
+                "healthkit",
+                case_name,
+                make_health_log_quantity_valid(case_name, idx, label, "kcal"),
+                False,
+                "unknown WFQuantitySampleType",
             )
         )
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import plistlib
 import random
 import subprocess
@@ -38,8 +39,8 @@ WEATHER_DETAILS = [
 
 ENDPOINTS = [
     ("https://httpbin.org/get?case={i}", "url"),
-    ("https://api.agify.io?name=federico", "age"),
-    ("https://api.genderize.io?name=federico", "gender"),
+    ("https://api.agify.io?name=alex", "age"),
+    ("https://api.genderize.io?name=alex", "gender"),
     ("https://catfact.ninja/fact", "fact"),
     ("https://jsonplaceholder.typicode.com/todos/1", "title"),
 ]
@@ -556,12 +557,14 @@ def main() -> int:
 
     runid = dt.datetime.now().strftime("%H%M%S")
     date_folder = dt.datetime.now().strftime("%Y-%m-%d")
+    configured_output_dir = (
+        args.output_dir
+        or os.environ.get("CLAUDE_PLUGIN_OPTION_OUTPUT_DIR")
+        or os.environ.get("SHORTCUTS_PLAYGROUND_OUTPUT_DIR")
+        or str(Path.home() / "Documents" / "Shortcuts Playground")
+    )
     out_dir = (
-        Path(args.output_dir).expanduser().resolve()
-        if args.output_dir
-        else Path.home()
-        / "Agent"
-        / "Shortcuts Playground"
+        Path(configured_output_dir).expanduser().resolve()
         / date_folder
         / f"random-mixed-actions-{runid}"
     )

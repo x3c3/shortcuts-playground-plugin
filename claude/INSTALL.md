@@ -1,6 +1,4 @@
-# Shortcuts Playground — Internal Install Guide
-
-> Internal release. Not production-hardened. If anything looks off, contact the maintainer.
+# Shortcuts Playground — Install Guide
 
 ## What this is
 
@@ -29,7 +27,7 @@ You need:
    ```bash
    export SHORTCUTS_PLAYGROUND_PYTHON=/opt/homebrew/bin/python3
    ```
-4. **A GitHub account with access to the repo.** If the plugin is installed from a private GitHub repo, log in with `gh` or configure Git credentials for HTTPS. If `git clone https://github.com/viticci/shortcuts-playground-plugin.git` works for you, you're set.
+4. **GitHub access.** If you install from a git-backed marketplace, make sure `git clone https://github.com/viticci/shortcuts-playground-plugin.git` works in your terminal first.
 
 ## Install (one time)
 
@@ -43,7 +41,7 @@ claude plugin marketplace add https://github.com/viticci/shortcuts-playground-pl
 claude plugin install shortcuts-playground@shortcuts-playground
 ```
 
-On first install Claude Code clones the private repo into `~/.claude/plugins/cache/` — you'll see the progress. If the clone fails with a GitHub auth error, fix your Git credentials first and re-run step 1.
+On first install Claude Code clones the repository into `~/.claude/plugins/cache/` — you'll see the progress. If the clone fails with a GitHub auth error, fix your Git credentials first and re-run step 1.
 
 Confirm the install worked:
 
@@ -51,7 +49,7 @@ Confirm the install worked:
 claude plugin list | grep shortcuts-playground
 ```
 
-You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.7.0  ✔ enabled`.
+You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.0  ✔ enabled`.
 
 ## Verify it works (strongly recommended)
 
@@ -171,19 +169,17 @@ Your `~/Documents/Shortcuts Playground/` directory stays intact — the plugin n
 
 ## Release notes
 
-You're installing **v1.7.5**. The full CHANGELOG is in the repo. Big recent changes:
+You're installing **v1.0**. The full CHANGELOG is in the repo. Big recent changes:
 
-- **v1.7.0** — repository split into separate `claude/` and `codex/` plugin packages.
-- **v1.6.x** — HealthKit action support and sanitized bundled HealthKit XML evidence.
-- **v1.5.2** — internal release for MacStories team (marketplace manifest co-located with the plugin so one GitHub URL installs everything).
-- **v1.5.1** — uuidgen-only UUID generation + validator backstop rejecting repeating-hex placeholders.
-- **v1.5.0** — remix command + shortcut-remixer agent (`/shortcuts-playground:remix`).
-- **v1.4.0** — Reminders recipes verified against an Apple-built sample; agent anti-reconnaissance hardening; research scoping.
-- **v1.3.0** — definitive conditional-block rules verified against an Apple-built sample (all 13 condition codes + multi-condition If).
+- **v1.0** — public launch reset; HealthKit active-energy labels now use `Active Calories`.
+
+- Dual Claude Code and Codex plugin packages live in one repository.
+- HealthKit actions include Find Health Samples, Get Details of Health Sample, Log Health Sample, and Log Workout reference coverage.
+- Remix mode can apply surgical edits to existing unsigned XML shortcuts.
 
 ## Feedback
 
-This is an internal release. If something breaks, works weirdly, or generates a shortcut that doesn't match your intent, report it with:
+If something breaks, works weirdly, or generates a shortcut that doesn't match your intent, report it with:
 
 1. The exact prompt you ran.
 2. The output path(s) in `~/Documents/Shortcuts Playground/`.
