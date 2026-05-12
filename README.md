@@ -54,19 +54,6 @@ Claude Code clones the repository into its plugin cache on first install. If the
    ```
 3. Start a new session to load the plugin.
 
-### Verify the install
-
-Run these four checks to confirm everything is wired up:
-
-```bash
-python3 --version                                # expect 3.10+
-which shortcuts                                  # expect /usr/bin/shortcuts
-claude plugin list | grep shortcuts-playground   # expect "✔ enabled"
-shortcuts-playground-selftest                    # expect "✔ All checks passed."
-```
-
-`shortcuts-playground-selftest` checks your Python version, the `shortcuts` CLI, the plugin root, bundled data files, the validator, and runs a full sign round trip. If anything fails, it tells you exactly what broke.
-
 ## Installation in Codex
 
 Codex installs plugins from marketplaces. This repository includes a Codex marketplace at `.agents/plugins/marketplace.json`, which points at the Codex package in `./codex`.
@@ -100,18 +87,6 @@ codex plugin marketplace add /absolute/path/to/shortcuts-playground-plugin
    ```
 3. Open Plugins in the Codex app, switch to the Shortcuts Playground marketplace, open Shortcuts Playground, and click the plus button or `Add to Codex`.
 4. Start a new thread to load the plugin.
-
-### Verify the install
-
-Run these checks to confirm the local requirements and Codex cache are in place:
-
-```bash
-python3 --version                                                   # expect 3.10+
-which shortcuts                                                     # expect /usr/bin/shortcuts
-test -d ~/.codex/plugins/cache/shortcuts-playground/shortcuts-playground/1.0 && echo "installed"
-```
-
-Then start a new Codex thread and ask it to use Shortcuts Playground. Codex should load the bundled skill and call the validator/signing scripts from the installed plugin cache.
 
 ---
 
