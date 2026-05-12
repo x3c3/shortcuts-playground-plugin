@@ -229,6 +229,262 @@ def token_string_variable(name: str) -> dict:
     }
 
 
+def make_send_message_single_type_valid(case_name: str) -> dict:
+    prompt = "Send Message single-type content through an appended variable payload."
+    actions = base_actions(case_name, prompt)
+    first_uuid = seeded_uuid(f"{case_name}-first-text")
+    empty_uuid = seeded_uuid(f"{case_name}-empty-text")
+    var_name = "Message Items"
+
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": first_uuid,
+                    "WFTextActionText": "Single content item",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.appendvariable",
+                "WFWorkflowActionParameters": {
+                    "WFVariableName": var_name,
+                    "WFInput": attachment_action_output(first_uuid, "Text"),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": empty_uuid,
+                    "WFTextActionText": "",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.appendvariable",
+                "WFWorkflowActionParameters": {
+                    "WFVariableName": var_name,
+                    "WFInput": attachment_action_output(empty_uuid, "Text"),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.sendmessage",
+                "WFWorkflowActionParameters": {
+                    "WFSendMessageContent": token_string_variable(var_name),
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions)
+
+
+def make_send_message_one_append_invalid(case_name: str) -> tuple[dict, str]:
+    prompt = "Reject Send Message content variables with only one Append Variable action."
+    actions = base_actions(case_name, prompt)
+    text_uuid = seeded_uuid(f"{case_name}-text")
+    var_name = "Message Items"
+
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": text_uuid,
+                    "WFTextActionText": "Only one append",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.appendvariable",
+                "WFWorkflowActionParameters": {
+                    "WFVariableName": var_name,
+                    "WFInput": attachment_action_output(text_uuid, "Text"),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.sendmessage",
+                "WFWorkflowActionParameters": {
+                    "WFSendMessageContent": token_string_variable(var_name),
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions), "2+ appends"
+
+
+def make_send_message_action_output_invalid(case_name: str) -> tuple[dict, str]:
+    prompt = "Reject Send Message content wired directly to an action output."
+    actions = base_actions(case_name, prompt)
+    text_uuid = seeded_uuid(f"{case_name}-text")
+
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": text_uuid,
+                    "WFTextActionText": "Direct output",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.sendmessage",
+                "WFWorkflowActionParameters": {
+                    "WFSendMessageContent": token_string_action_output(text_uuid, "Text"),
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions), "should reference a named variable"
+
+
+def make_send_message_attachment_invalid(case_name: str) -> tuple[dict, str]:
+    prompt = "Reject Send Message content using WFTextTokenAttachment."
+    plist = make_send_message_single_type_valid(case_name)
+    plist["WFWorkflowActions"][-1]["WFWorkflowActionParameters"]["WFSendMessageContent"] = (
+        attachment_variable("Message Items")
+    )
+    return plist, "should use WFTextTokenString"
+
+
+def calendar_next_event_filter(operator: int) -> dict:
+    return {
+        "WFSerializationType": "WFContentPredicateTableTemplate",
+        "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFContentPredicateBoundedDate": False,
+            "WFActionParameterFilterTemplates": [
+                {
+                    "Operator": 1002,
+                    "Property": "Start Date",
+                    "Removable": True,
+                    "Values": {},
+                },
+                {
+                    "Operator": operator,
+                    "Property": "Start Date",
+                    "Removable": True,
+                    "Values": {"Date": current_date_attachment()},
+                },
+            ],
+        },
+    }
+
+
+def make_calendar_next_event_filter_valid(case_name: str) -> dict:
+    actions = base_actions(case_name, "Find the next calendar event after now.")
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.filter.calendarevents",
+            "WFWorkflowActionParameters": {
+                "UUID": seeded_uuid(f"{case_name}-find-events"),
+                "WFContentItemFilter": calendar_next_event_filter(2),
+                "WFContentItemSortProperty": "Start Date",
+                "WFContentItemSortOrder": "Oldest First",
+                "WFContentItemLimitEnabled": True,
+                "WFContentItemLimitNumber": 1,
+            },
+        }
+    )
+    return root_plist(case_name, actions)
+
+
+def make_calendar_next_event_filter_invalid(case_name: str) -> tuple[dict, str]:
+    plist = make_calendar_next_event_filter_valid(case_name)
+    templates = plist["WFWorkflowActions"][-1]["WFWorkflowActionParameters"]["WFContentItemFilter"][
+        "Value"
+    ]["WFActionParameterFilterTemplates"]
+    templates[1]["Operator"] = 3
+    return plist, "numeric operator 3"
+
+
+def make_get_time_between_dates_valid(case_name: str) -> dict:
+    actions = base_actions(case_name, "Compute minutes between two dates.")
+    start_uuid = seeded_uuid(f"{case_name}-start-date")
+    now_uuid = seeded_uuid(f"{case_name}-now-date")
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.date",
+                "WFWorkflowActionParameters": {
+                    "UUID": start_uuid,
+                    "WFDateActionMode": "Current Date",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.date",
+                "WFWorkflowActionParameters": {
+                    "UUID": now_uuid,
+                    "WFDateActionMode": "Current Date",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettimebetweendates",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-time-between"),
+                    "WFInput": token_string_action_output(start_uuid, "Date"),
+                    "WFTimeUntilFromDate": token_string_action_output(now_uuid, "Date"),
+                    "WFTimeUntilUnit": "Minutes",
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions)
+
+
+def make_get_time_between_dates_current_date_invalid(case_name: str) -> tuple[dict, str]:
+    plist = make_get_time_between_dates_valid(case_name)
+    plist["WFWorkflowActions"][-1]["WFWorkflowActionParameters"]["WFTimeUntilFromDate"] = (
+        current_date_attachment()
+    )
+    return plist, "cannot use CurrentDate"
+
+
+def make_get_time_between_dates_attachment_invalid(case_name: str) -> tuple[dict, str]:
+    plist = make_get_time_between_dates_valid(case_name)
+    actions = plist["WFWorkflowActions"]
+    start_uuid = actions[-3]["WFWorkflowActionParameters"]["UUID"]
+    now_uuid = actions[-2]["WFWorkflowActionParameters"]["UUID"]
+    actions[-1]["WFWorkflowActionParameters"]["WFInput"] = attachment_action_output(start_uuid, "Date")
+    actions[-1]["WFWorkflowActionParameters"]["WFTimeUntilFromDate"] = attachment_action_output(
+        now_uuid, "Date"
+    )
+    return plist, "should use WFTextTokenString"
+
+
+def make_text_token_placeholder_invalid(case_name: str) -> tuple[dict, str]:
+    actions = base_actions(case_name, "Reject token strings whose range points away from the placeholder.")
+    date_uuid = seeded_uuid(f"{case_name}-date")
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.date",
+                "WFWorkflowActionParameters": {
+                    "UUID": date_uuid,
+                    "WFDateActionMode": "Current Date",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": seeded_uuid(f"{case_name}-text"),
+                    "WFTextActionText": {
+                        "WFSerializationType": "WFTextTokenString",
+                        "Value": {
+                            "string": f"A{PLACEHOLDER}",
+                            "attachmentsByRange": {
+                                "{0, 1}": {
+                                    "Type": "ActionOutput",
+                                    "OutputUUID": date_uuid,
+                                    "OutputName": "Date",
+                                }
+                            },
+                        },
+                    },
+                },
+            },
+        ]
+    )
+    return root_plist(case_name, actions), "expected placeholder position"
+
+
 def current_date_attachment() -> dict:
     return {
         "WFSerializationType": "WFTextTokenAttachment",
@@ -1614,6 +1870,46 @@ def build_cases() -> list[Case]:
             "requires ActionExtension",
         )
     )
+    cases.append(
+        Case(
+            "send-message",
+            "ZZ-SendMessage-Single-Type-Valid",
+            make_send_message_single_type_valid("ZZ-SendMessage-Single-Type-Valid"),
+            True,
+        )
+    )
+    for name, maker in [
+        ("ZZ-SendMessage-One-Append-Invalid", make_send_message_one_append_invalid),
+        ("ZZ-SendMessage-ActionOutput-Invalid", make_send_message_action_output_invalid),
+        ("ZZ-SendMessage-Attachment-Invalid", make_send_message_attachment_invalid),
+    ]:
+        plist, expected = maker(name)
+        cases.append(Case("send-message", name, plist, False, expected))
+    cases.append(
+        Case(
+            "calendar-filters",
+            "ZZ-Calendar-Next-Event-Filter-Valid",
+            make_calendar_next_event_filter_valid("ZZ-Calendar-Next-Event-Filter-Valid"),
+            True,
+        )
+    )
+    plist, expected = make_calendar_next_event_filter_invalid("ZZ-Calendar-Next-Event-Filter-Invalid")
+    cases.append(Case("calendar-filters", "ZZ-Calendar-Next-Event-Filter-Invalid", plist, False, expected))
+    cases.append(
+        Case(
+            "date-delta",
+            "ZZ-Get-Time-Between-Dates-Valid",
+            make_get_time_between_dates_valid("ZZ-Get-Time-Between-Dates-Valid"),
+            True,
+        )
+    )
+    for name, maker in [
+        ("ZZ-Get-Time-Between-Dates-CurrentDate-Invalid", make_get_time_between_dates_current_date_invalid),
+        ("ZZ-Get-Time-Between-Dates-Attachment-Invalid", make_get_time_between_dates_attachment_invalid),
+        ("ZZ-Text-Token-Placeholder-Invalid", make_text_token_placeholder_invalid),
+    ]:
+        plist, expected = maker(name)
+        cases.append(Case("date-delta", name, plist, False, expected))
 
     # 43 weather cases (21 valid + 22 invalid)
     for idx in range(20):

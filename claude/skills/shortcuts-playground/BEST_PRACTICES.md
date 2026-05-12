@@ -65,7 +65,9 @@ These guidelines are mandatory for every shortcut built with this skill. If guid
 - For **Log Workout** (`is.workflow.actions.health.workout.log`), set an explicit `WFWorkoutReadableActivityType` and use `WFQuantityFieldValue` for duration, calories, and distance when present.
 - Do not run Health-writing shortcuts only to test syntax. Import/edit/export and validate them unless the user explicitly asks you to run them.
 - For location-bearing parameters (`WFLocation`, `WFWeatherCustomLocation`, legacy `WFWeatherLocation`), use `WFTextTokenAttachment` (not `WFTextTokenString`) and wire to **Get Current Location**/`Location` outputs directly, or variables sourced from those outputs. Never emit these keys as empty dictionaries/strings.
-- For **Get Time Between Dates** (`is.workflow.actions.gettimebetweendates`), set `WFInput` and **exactly one** non-empty date operand (`WFDate` or `WFTimeUntilCustomDate` or `WFTimeUntilFromDate`). Prefer `WFTimeUntilFromDate` for date-vs-date deltas. `WFTimeUntilUnit` can be omitted only when relying on the action default; never emit unused empty date keys.
+- For **Find Calendar Events** date filters, use date operators, not numeric If operators. For the common "next event after now" filter, use `Start Date is today` (`Operator: 1002`, empty `Values`) plus `Start Date is after Current Date` (`Operator: 2`, `Values.Date` as a `CurrentDate` token). Do not use `Operator: 3`; it imports as a red invalid date condition.
+- For **Get Time Between Dates** (`is.workflow.actions.gettimebetweendates`), set `WFInput` and **exactly one** non-empty date operand (`WFDate` or `WFTimeUntilCustomDate` or `WFTimeUntilFromDate`). Both `WFInput` and the date operand must be `WFTextTokenString` placeholders referencing action outputs. Prefer `WFTimeUntilFromDate` for date-vs-date deltas. `WFTimeUntilUnit` can be omitted only when relying on the action default; never emit unused empty date keys.
+- For **Get Time Between Dates**, do not use the `CurrentDate` magic token directly. Insert a **Date** action set to **Current Date** first, then reference that Date action's output.
 - For **Extract Text from Image** (`is.workflow.actions.extracttextfromimage`), set exactly one non-empty image input key: prefer `WFImage` (fallback `WFInput` only when explicitly required by an existing pattern). Do not include an empty second image-input key.
 - For API error handling with **Get Dictionary Value**, avoid direct optional key paths such as `error.message` on raw responses; extract `error` first, guard with **If Has Any Value**, then read nested keys inside that branch.
 - Do not output placeholder actions with empty parameters. If a Text/Ask action would be blank, remove it or replace with a Comment. Omit `WFAskActionDefaultAnswer` entirely when there is no default.
@@ -163,7 +165,7 @@ After generating a shortcut, run the local validator and loop until it passes. T
 - No empty `WFInput` where explicitly set.
 - No missing `WFInput` for required-input actions (e.g., **Open URL**, **Get URLs from Input**, **Choose from List**, **Set Clipboard**, **Convert Image**, **Get Detail of Weather Conditions**, **Get Time Between Dates**).
 - For **Adjust Date**, require a non-empty date source (`WFDate` or `WFInput`) and non-empty `WFDuration`; reject empty date keys when present.
-- For **Get Time Between Dates**, require exactly one non-empty date operand and reject empty `WFDate` / `WFTimeUntilCustomDate` / `WFTimeUntilFromDate` keys when present.
+- For **Get Time Between Dates**, require exactly one non-empty date operand, reject empty `WFDate` / `WFTimeUntilCustomDate` / `WFTimeUntilFromDate` keys when present, and use `WFTextTokenString` placeholders for both date inputs.
 - For **Extract Text from Image**, require exactly one non-empty image input key (`WFImage` preferred; `WFInput` allowed when intentionally used) and reject empty image-input keys.
 - For **Change Case** and **Split Text**, input must be in the `text` parameter (not `WFInput`).
 - For **Replace Text**, input must be in `WFInput` (not `text`).
@@ -263,15 +265,24 @@ Example:
 - When constructing **Dictionary** actions, use `WFDictionaryFieldValue` wrappers (not raw arrays) and the correct item types for strings, nested dictionaries, and booleans.
 - Shortcuts bug: when comparing a **Dictionary Value** (text) in an **If** condition, you must first pass it through a **Text** action, then compare the Text variable. Direct comparisons against Dictionary Value often appear blank and fail.
 
-## Messages & Mixed Content
+## Messages & Send Message Content
 
-- When sending **both text and files** via **Send Message**, do **not** wrap everything in a single Text action.
-- Use **Add to Variable** (`is.workflow.actions.appendvariable`) to build a multi-item variable:
-  - Append the audio/file variable.
-  - Append the text (and location text).
+- **Send Message content must reference a named variable built with at least 2 Append Variable actions**, even when sending only one content type such as photos, files, or text.
+- Do **not** wire Send Message content directly to an action output, and do **not** use `WFSendMessageAttachments` together with `WFSendMessageContent`.
+- Use **Add to Variable** (`is.workflow.actions.appendvariable`) to build the message payload:
+  - For mixed content, append the file/audio/photo variable, then append the text/location text.
+  - For single-type content, append the source variable, then append an empty Text action output to the same variable. This preserves the multi-item payload shape that Send Message imports reliably and that the validator enforces.
   - Do **not** initialize the variable first; just keep appending.
-- Pass the named variable to **Send Message** as the message content. All appended items (different types) will be sent together.
-- For Send Message content, prefer `WFTextTokenString` with a variable placeholder (not `WFTextTokenAttachment`), otherwise the message field can appear blank in the editor.
+- Pass the named variable to **Send Message** as `WFSendMessageContent`.
+- Send Message content must use `WFTextTokenString` with a variable placeholder (not `WFTextTokenAttachment`), otherwise the message field can appear blank in the editor.
+
+Single-type example:
+
+```text
+Find Photos -> Append Variable "Message Items"
+Text "" -> Append Variable "Message Items"
+Send Message content -> WFTextTokenString placeholder for "Message Items"
+```
 
 ## Text & Parsing
 

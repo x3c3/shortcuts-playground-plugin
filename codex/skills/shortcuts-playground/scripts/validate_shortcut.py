@@ -867,6 +867,13 @@ def _utf16_units(s: str) -> list[int]:
     return [data[i] + (data[i + 1] << 8) for i in range(0, len(data), 2)]
 
 
+def _placeholder_position_hint(string: str) -> str:
+    positions = [f"{{{idx}, 1}}" for idx, unit in enumerate(_utf16_units(string)) if unit == 0xFFFC]
+    if not positions:
+        return "expected no placeholder positions"
+    return "expected placeholder position(s): " + ", ".join(positions)
+
+
 def iter_action_output_refs(obj):
     if isinstance(obj, dict):
         if obj.get("Type") == "ActionOutput":
@@ -1238,6 +1245,59 @@ def _input_action_output_uuids(value) -> list[str]:
     return []
 
 
+def _input_has_current_date_token(value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    if value.get("Type") == "Variable" and isinstance(value.get("Variable"), dict):
+        value = value.get("Variable")
+    ser = value.get("WFSerializationType")
+    if ser == "WFTextTokenAttachment":
+        val = value.get("Value")
+        return isinstance(val, dict) and val.get("Type") == "CurrentDate"
+    if ser == "WFTextTokenString":
+        val = value.get("Value") if isinstance(value.get("Value"), dict) else {}
+        attachments = val.get("attachmentsByRange")
+        if isinstance(attachments, dict):
+            return any(
+                isinstance(att, dict) and att.get("Type") == "CurrentDate"
+                for att in attachments.values()
+            )
+    return False
+
+
+def _collect_send_message_empty_text_spacer_uuids(actions: list[dict]) -> set[str]:
+    """Empty Text outputs are allowed only as Send Message payload spacers."""
+    send_message_vars: set[str] = set()
+    empty_text_uuids: set[str] = set()
+
+    for act in actions:
+        ident = act.get("WFWorkflowActionIdentifier")
+        params = act.get("WFWorkflowActionParameters") or {}
+        if ident == "is.workflow.actions.sendmessage":
+            name = _extract_input_variable_name(params.get("WFSendMessageContent"))
+            if name:
+                send_message_vars.add(name)
+        elif ident == "is.workflow.actions.gettext":
+            uuid = params.get("UUID")
+            if isinstance(uuid, str) and params.get("WFTextActionText") == "":
+                empty_text_uuids.add(uuid)
+
+    if not send_message_vars or not empty_text_uuids:
+        return set()
+
+    spacer_uuids: set[str] = set()
+    for act in actions:
+        if act.get("WFWorkflowActionIdentifier") != "is.workflow.actions.appendvariable":
+            continue
+        params = act.get("WFWorkflowActionParameters") or {}
+        if params.get("WFVariableName") not in send_message_vars:
+            continue
+        for uuid in _input_action_output_uuids(params.get("WFInput")):
+            if uuid in empty_text_uuids:
+                spacer_uuids.add(uuid)
+    return spacer_uuids
+
+
 def _input_has_reference(value) -> bool:
     if _extract_input_variable_name(value) or _input_action_output_uuids(value):
         return True
@@ -1325,6 +1385,7 @@ def validate(
     uuid_to_ident: dict[str, str] = {}
     uuid_to_params: dict[str, dict] = {}
     append_counts = _collect_variable_append_counts(actions)
+    send_message_empty_text_spacer_uuids = _collect_send_message_empty_text_spacer_uuids(actions)
     used_output_uuids: set[str] = set()
     repeat_stack: list[dict] = []
     repeat_end_uuids: dict[str, str] = {}
@@ -1815,6 +1876,12 @@ def validate(
 
         # Empty strings in parameters
         for path in iter_empty_strings(params):
+            if (
+                ident == "is.workflow.actions.gettext"
+                and tuple(path) == ("WFTextActionText",)
+                and params.get("UUID") in send_message_empty_text_spacer_uuids
+            ):
+                continue
             errors.append(f"Empty parameter at index {idx}: {ident} -> {'/'.join(path)}")
 
         # Validate WFTextTokenString placeholders (Shortcuts uses UTF-16 indices)
@@ -1846,12 +1913,21 @@ def validate(
                 length = int(m.group(2))
                 total_len += length
                 if start < 0 or start + length > len(units):
-                    errors.append(f"attachmentsByRange out of bounds at index {idx}: {key}")
+                    errors.append(
+                        f"attachmentsByRange out of bounds at index {idx}: got {key}; "
+                        f"UTF-16 length is {len(units)}; {_placeholder_position_hint(string)}"
+                    )
                     continue
                 if any(units[start + j] != 0xFFFC for j in range(length)):
-                    errors.append(f"attachmentsByRange does not match placeholder at index {idx}: {key}")
+                    errors.append(
+                        f"attachmentsByRange does not match placeholder at index {idx}: got {key}; "
+                        f"{_placeholder_position_hint(string)}"
+                    )
             if string.count("￼") != total_len:
-                errors.append(f"Placeholder count mismatch at index {idx}")
+                errors.append(
+                    f"Placeholder count mismatch at index {idx}: string has {string.count('￼')} "
+                    f"placeholder(s), attachments cover {total_len}; {_placeholder_position_hint(string)}"
+                )
 
         # vCard/VCF usage should be explicit
         if ident != "is.workflow.actions.comment" and not allow_vcard:
@@ -2096,7 +2172,7 @@ def validate(
                 errors.append(f"Text action missing text at index {idx}")
             else:
                 text = params.get("WFTextActionText")
-                if text == "":
+                if text == "" and params.get("UUID") not in send_message_empty_text_spacer_uuids:
                     errors.append(f"Text action has empty text at index {idx}")
 
         if ident == "is.workflow.actions.number":
@@ -2337,6 +2413,16 @@ def validate(
                         f"Get Time Between Dates {key} is not a token attachment at index {idx}"
                     )
                     continue
+                if _input_has_current_date_token(reference):
+                    errors.append(
+                        f"Get Time Between Dates {key} cannot use CurrentDate magic token directly at index {idx}; "
+                        "insert a Date action set to Current Date and reference that action output"
+                    )
+                    continue
+                if not _input_is_token_string(reference):
+                    errors.append(
+                        f"Get Time Between Dates {key} should use WFTextTokenString with a placeholder at index {idx}"
+                    )
                 if not _input_has_reference(reference):
                     errors.append(
                         f"Get Time Between Dates {key} has no variable/output reference at index {idx}"
@@ -2347,6 +2433,17 @@ def validate(
                         errors.append(
                             f"Get Time Between Dates {key} references unknown OutputUUID at index {idx}"
                         )
+
+            wfinput = params.get("WFInput")
+            if _input_has_current_date_token(wfinput):
+                errors.append(
+                    f"Get Time Between Dates WFInput cannot use CurrentDate magic token directly at index {idx}; "
+                    "insert a Date action set to Current Date and reference that action output"
+                )
+            elif wfinput and not _input_is_token_string(wfinput):
+                errors.append(
+                    f"Get Time Between Dates WFInput should use WFTextTokenString with a placeholder at index {idx}"
+                )
 
             unit = params.get("WFTimeUntilUnit")
             if not _token_param_is_empty(unit) and isinstance(unit, str) and unit.strip().lower() not in DATE_DELTA_UNITS:
@@ -2506,6 +2603,48 @@ def validate(
                                         errors.append(
                                             f"Find Notes Folder filter Enumeration value is empty at index {idx}"
                                         )
+
+        if ident == "is.workflow.actions.filter.calendarevents":
+            filt = params.get("WFContentItemFilter")
+            if not isinstance(filt, dict):
+                errors.append(f"Find Calendar Events missing WFContentItemFilter at index {idx}")
+            elif filt.get("WFSerializationType") != "WFContentPredicateTableTemplate":
+                errors.append(
+                    f"Find Calendar Events WFContentItemFilter must use WFContentPredicateTableTemplate at index {idx}"
+                )
+            else:
+                inner = filt.get("Value")
+                templates = inner.get("WFActionParameterFilterTemplates") if isinstance(inner, dict) else None
+                if not isinstance(templates, list) or not templates:
+                    errors.append(f"Find Calendar Events WFContentItemFilter has no templates at index {idx}")
+                else:
+                    for tidx, template in enumerate(templates):
+                        if not isinstance(template, dict):
+                            errors.append(
+                                f"Find Calendar Events filter template {tidx} is not a dict at index {idx}"
+                            )
+                            continue
+                        prop = template.get("Property")
+                        op = template.get("Operator")
+                        if prop in {"Start Date", "End Date"} and op == 3:
+                            errors.append(
+                                f"Find Calendar Events {prop} filter uses numeric operator 3 at index {idx}; "
+                                "use date operator 2 for 'is after', 1002 for 'is today', or 1003 for 'is between'"
+                            )
+                        if prop in {"Start Date", "End Date"} and op in {2, 1003}:
+                            values = template.get("Values")
+                            if not isinstance(values, dict):
+                                errors.append(
+                                    f"Find Calendar Events {prop} date filter missing Values dict at index {idx}"
+                                )
+                            elif op == 2 and "Date" not in values:
+                                errors.append(
+                                    f"Find Calendar Events {prop} 'is after' filter missing Values.Date at index {idx}"
+                                )
+                            elif op == 1003 and ("Date" not in values or "AnotherDate" not in values):
+                                errors.append(
+                                    f"Find Calendar Events {prop} 'is between' filter needs Values.Date and Values.AnotherDate at index {idx}"
+                                )
 
         if ident == HEALTH_FIND_SAMPLES_ACTION:
             if "WFHealthQuantityType" in params:
@@ -2703,7 +2842,8 @@ def validate(
                 errors.append(f"Set Variable WFInput is not a token attachment at index {idx}")
 
         if ident == "is.workflow.actions.sendmessage":
-            # Mixed content should be sent via an appended variable list
+            # Send Message content should be sent via an appended variable list,
+            # even for single-type payloads, to preserve the importable list shape.
             content = params.get("WFSendMessageContent")
             attachments = params.get("WFSendMessageAttachments")
             if not content and not attachments and not params.get("WFInput"):
@@ -2716,7 +2856,7 @@ def validate(
                 name = _extract_input_variable_name(content)
                 if name and append_counts.get(name, 0) < 2:
                     errors.append(
-                        f"Send Message content variable '{name}' should be built with Append Variable (2+ items) at index {idx}"
+                        f"Send Message content variable '{name}' should be built with Append Variable (2+ appends, even for single-type content) at index {idx}"
                     )
                 # Disallow ActionOutput attachments for Send Message content
                 out_uuids = _input_action_output_uuids(content)

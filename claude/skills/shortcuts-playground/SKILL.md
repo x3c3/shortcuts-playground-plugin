@@ -33,6 +33,10 @@ Prefer these wrappers over calling the underlying `python3 scripts/*.py` files d
 **Mandatory**: Follow the guidelines in [BEST_PRACTICES.md](BEST_PRACTICES.md) for every shortcut.
 If guidance here conflicts with [BEST_PRACTICES.md](BEST_PRACTICES.md), follow `BEST_PRACTICES.md`.
 
+**Definition of done**: a new build is not complete when XML validation passes. It is complete only after `sign-shortcut` archives the unsigned XML, writes the signed `.shortcut`, and you verify the signed file exists with non-zero size.
+
+**Pipeline-first rule**: write the smallest complete shortcut that implements the request, validate it, sign it, and verify the signed file before spending turns on cosmetic polish. Comments only need to be concise and repair-oriented. A valid XML draft without a signed `.shortcut` is not a useful stopping point.
+
 ## Recommended Reading Order
 
 1. [BEST_PRACTICES.md](BEST_PRACTICES.md) for mandatory rules and validation expectations
@@ -362,6 +366,9 @@ The archive copy must be the **unsigned, raw XML** (not the signed `.shortcut`).
 7. **Write to file** - Save as `.shortcut` (XML plist format is fine)
 8. **Preflight validation** - Run the Craig Loop (see above): validate → fix → re-validate, max 5 iterations. The `PostToolUse` hook auto-runs `validate-shortcut` whenever you write a Shortcuts plist file; read its errors before iterating.
 9. **Archive + Sign (required)** - Run `sign-shortcut /path/to/file.xml --name "Final Name"`. This wrapper archives the unsigned XML to `${user_config.output_dir}/$(date +%F)/` and writes the signed `.shortcut` alongside it. Never leave the signing output filename with a `_signed` suffix.
+10. **Verify signed output (required)** - Confirm the signed `.shortcut` path reported by `sign-shortcut` exists and has non-zero size before reporting done. Stopping at "validation passed" is a failed build.
+
+After step 8 succeeds, go directly to step 9. Any edit after validation, including comment or wording polish, requires another validation and another signing pass.
 
 ## Comment Blocks (Repair-Oriented)
 
@@ -413,7 +420,7 @@ Prefer wording like `- Input uses the text output from the Text action above` an
 36. **Adjust Date reliability**: Use `WFDate` + non-empty `WFDuration` for `is.workflow.actions.adjustdate` (optionally mirror with `WFInput`); include `WFAdjustOperation` when explicit Add/Subtract is required. Offset-picker-only payloads can import as `Add 0 seconds` on iOS
 37. **Convert Image wiring**: For `is.workflow.actions.image.convert`, always set `WFInput` explicitly; do not rely on implicit input chaining
 38. **Weather detail wiring**: For `is.workflow.actions.properties.weather.conditions`, set both `WFInput` and `WFContentItemPropertyName`, keep `WFContentItemPropertyName` concrete (never placeholder `Detail`), and wire `WFInput` directly to an ActionOutput from `is.workflow.actions.weather.currentconditions` / `is.workflow.actions.weather.forecast` (no named-variable hop). Supported detail names are `Date`, `Location`, `Temperature`, `Low`, `High`, `Feels Like`, `Condition`, `Visibility`, `Dewpoint`, `Humidity`, `Pressure`, `Precipitation Amount`, `Precipitation Chance`, `Wind Speed`, `Wind Direction`, `UV Index`, `Sunrise Time`, `Sunset Time`, `Air Quality Index`, `Air Quality Category`, `Air Pollutants`, and `Name`. `Sunrise Time` and `Sunset Time` from Daily forecasts are lists: insert `Get Item from List` before `Format Date`, using First Item for sunrise and Last Item for sunset
-39. **Time Between Dates input wiring**: For `is.workflow.actions.gettimebetweendates`, set `WFInput` and exactly one non-empty date operand (`WFDate` or `WFTimeUntilCustomDate` or `WFTimeUntilFromDate`); `WFTimeUntilUnit` may be omitted only when intentionally using the default unit. Never emit empty unused date keys
+39. **Time Between Dates input wiring**: For `is.workflow.actions.gettimebetweendates`, set `WFInput` and exactly one non-empty date operand (`WFDate` or `WFTimeUntilCustomDate` or `WFTimeUntilFromDate`) as `WFTextTokenString` placeholders. To compare with now, first add a Date action set to Current Date and reference that action output; never put a direct `CurrentDate` magic token in the action. `WFTimeUntilUnit` may be omitted only when intentionally using the default unit. Never emit empty unused date keys
 40. **Extract Text from Image input wiring**: For `is.workflow.actions.extracttextfromimage`, set exactly one non-empty image input key (`WFImage` preferred, `WFInput` only when intentionally required)
 41. **API error extraction safety**: Do not read `error.message` directly from a raw response; extract `error`, guard it with `If Has Any Value`, then read `message`
 42. **Continuation JSON array closure**: When appending to a JSON array via `Replace Text` on `\]$`, the replacement must end with `]`; missing the closing bracket corrupts JSON and causes `Detect Dictionary` to return empty

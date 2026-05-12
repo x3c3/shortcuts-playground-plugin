@@ -35,6 +35,7 @@ Operators define the comparison type. These were discovered from Shortcuts inter
 
 | Operator | Meaning | Use Case |
 |----------|---------|----------|
+| 2 | `is after` | Date is after a date/token |
 | 3 | `>=` | Greater than or equal |
 | 4 | `is` | Exact match |
 | 5 | `is not` | Not equal |
@@ -106,6 +107,48 @@ The `is today` operator (1002) does NOT require Values:
     <string>Date Taken</string>
     <key>Removable</key>
     <true/>
+</dict>
+```
+
+### Find Calendar Events: Next Event After Now
+
+For **Find Calendar Events** date predicates, use the date-specific operator codes. Do not use numeric comparison codes such as `3` (`>=`) for `Start Date` or `End Date`; Shortcuts can import that as a red invalid condition. The common "next event after now" pattern is:
+
+- `Start Date is today`: `Operator = 1002`, `Values = {}`.
+- `Start Date is after Current Date`: `Operator = 2`, `Values.Date = CurrentDate` token.
+- Sort by `Start Date`, `Oldest First`, limit to `1`.
+
+```xml
+<dict>
+    <key>Operator</key>
+    <integer>1002</integer>
+    <key>Property</key>
+    <string>Start Date</string>
+    <key>Removable</key>
+    <true/>
+    <key>Values</key>
+    <dict/>
+</dict>
+<dict>
+    <key>Operator</key>
+    <integer>2</integer>
+    <key>Property</key>
+    <string>Start Date</string>
+    <key>Removable</key>
+    <true/>
+    <key>Values</key>
+    <dict>
+        <key>Date</key>
+        <dict>
+            <key>Value</key>
+            <dict>
+                <key>Type</key>
+                <string>CurrentDate</string>
+            </dict>
+            <key>WFSerializationType</key>
+            <string>WFTextTokenAttachment</string>
+        </dict>
+    </dict>
 </dict>
 ```
 

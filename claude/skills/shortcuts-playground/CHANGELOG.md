@@ -1,5 +1,31 @@
 # Autoresearch Loop Changelog
 
+## Date: May 12, 2026 — Calendar date filters and Time Between Dates wiring
+
+### Summary
+
+Closed gaps exposed by a "time until next calendar event" shortcut: invalid Calendar Events date filter operators, Get Time Between Dates UI serialization, and low-signal placeholder range errors.
+
+### Fixes Applied
+
+- Documented the Calendar Events "next event after now" filter: `Start Date is today` plus `Start Date is after Current Date` with date operator `2`; validator now rejects numeric operator `3` on calendar date properties.
+- Documented and enforced `WFTextTokenString` placeholder wiring for Get Time Between Dates date inputs. Direct `CurrentDate` magic tokens now produce an explicit "use a Date action first" validator error.
+- Improved `attachmentsByRange` diagnostics so placeholder errors report the expected UTF-16 placeholder positions.
+- Added regression coverage for valid/invalid calendar event filters, valid/invalid Get Time Between Dates wiring, and placeholder offset failures.
+- Added pipeline-first build guidance: validate, sign, and verify before optional comment/prose polish.
+
+## Date: May 12, 2026 — Send Message appended-variable guidance
+
+### Summary
+
+Clarified that Send Message content must use a named variable built from at least two Append Variable actions, including single-type payloads such as photos-only messages.
+
+### Fixes Applied
+
+- Reframed the Send Message guidance so the appended-variable rule is no longer scoped only to mixed text-and-file messages.
+- Added the single-type pattern: append the source content, append an empty Text output to the same variable, then reference the named variable with `WFTextTokenString`.
+- Updated the validator error to state the exact invariant and added regression coverage for the valid single-type pattern plus invalid one-append, direct ActionOutput, and `WFTextTokenAttachment` variants.
+
 ## Date: May 8, 2026 — 1.0 public launch reset and Active Calories correction
 
 ### Summary

@@ -132,8 +132,16 @@ Some actions have non-standard mappings:
 | `date` | WFDateAction | Create date |
 | `adjustdate` | WFAdjustDateAction | Adjust date |
 | `converttimezone` | WFConvertTimeZoneAction | Convert timezone |
+| `gettimebetweendates` | WFTimeUntilAction | Get time between dates |
 | `delay` | WFDelayAction | Wait |
 | `waittoreturn` | WFWaitToReturnAction | Wait to return |
+
+#### Get Time Between Dates (`is.workflow.actions.gettimebetweendates`)
+
+- Set `WFInput` to the target/end date as a `WFTextTokenString` placeholder.
+- Set exactly one date operand: usually `WFTimeUntilFromDate`, also as a `WFTextTokenString` placeholder.
+- To compare an event start date with now, add a **Date** action set to **Current Date** and reference that action output from `WFTimeUntilFromDate`. Do not put a `CurrentDate` magic token directly in `WFTimeUntilFromDate`; it imports as an empty/default date field.
+- Do not use bare `WFTextTokenAttachment` for either date input. It can validate structurally but import as "First Date" / "Second Date" placeholders in Shortcuts.
 
 ### Calendar & Reminders
 

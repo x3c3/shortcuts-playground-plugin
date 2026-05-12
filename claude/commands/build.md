@@ -11,7 +11,8 @@ The agent owns the full workflow end-to-end. Your job as the orchestrator is min
 
 1. **Invoke the agent** via the `Agent` tool with `subagent_type: shortcut-builder`, passing the brief as the agent's prompt.
 2. **Wait for the agent's result.** The agent is responsible for: resolving the output directory, reading skill files, picking an icon, drafting, Craig-Loop validating, archiving, signing, verifying the signed file exists, and reporting absolute paths.
-3. **Relay the agent's report to the user** verbatim. Don't re-run any steps the agent already completed.
+3. **Reject incomplete reports.** If the agent returns only "validation passed", a draft XML path, or anything without a verified signed `.shortcut` path plus archive XML path, treat that as an incomplete build and re-delegate with: "Pipeline first: skip optional polish, run sign-shortcut on the current valid draft, verify the signed file exists, and report the signed and archive paths."
+4. **Relay the agent's report to the user** verbatim. Don't re-run any steps the agent already completed.
 
 ## When the agent escalates
 

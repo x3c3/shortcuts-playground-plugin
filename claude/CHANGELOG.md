@@ -2,6 +2,17 @@
 
 All notable changes to the Shortcuts Playground plugin are documented in this file. The skill-level changelog lives at `skills/shortcuts-playground/CHANGELOG.md`.
 
+## Unreleased
+
+### Fixed — Send Message payload guidance
+
+- Clarified both Claude Code and Codex skill guidance so Send Message content always uses a named variable built with at least two Append Variable actions, even for single-type content.
+- Updated validator messaging and regression coverage for single-type Send Message payloads, one-append failures, direct ActionOutput failures, and `WFTextTokenAttachment` failures.
+- Added Calendar Events date-filter validation so numeric operator `3` is rejected for `Start Date`/`End Date`; documented the `Operator = 2` "is after Current Date" pattern for next-event shortcuts.
+- Tightened Get Time Between Dates guidance and validation: date inputs must use `WFTextTokenString` placeholders, and direct `CurrentDate` magic tokens now point agents to insert a Date action first.
+- Improved placeholder range validator errors to include expected UTF-16 placeholder positions.
+- Added pipeline-first guidance to the builder flow so agents validate, sign, and verify before optional polishing, and so incomplete "validation passed" reports are re-delegated as signing tasks.
+
 ## [1.0] — 2026-05-08
 
 ### Fixed — public launch reset and HealthKit active calories
