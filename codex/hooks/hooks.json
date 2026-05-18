@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/auto-validate.sh\"",
+            "statusMessage": "Validating Shortcuts XML"
+          }
+        ]
+      }
+    ]
+  }
+}

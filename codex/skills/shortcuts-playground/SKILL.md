@@ -9,7 +9,12 @@ Generate valid `.shortcut` files that can be signed and imported into Apple's Sh
 
 ## Codex Compatibility
 
-Codex plugins do not expose the Claude Code slash commands, specialized agents, PostToolUse hook, or PATH wrapper commands from the Claude package. In Codex, use this skill directly and call the bundled scripts by path.
+Codex plugins do not expose the Claude Code slash commands, specialized agents, or PATH wrapper commands from the Claude package. In Codex, use this skill directly and call the bundled scripts by path.
+
+The Codex package also bundles a `PostToolUse` auto-validation hook. It runs only
+when Codex plugin hooks are enabled with `[features].plugin_hooks = true` and
+the hook has been trusted in `/hooks` if Codex prompts for review. The hook
+validates changed `.xml`/`.shortcut` files that contain `WFWorkflowActions`.
 
 Resolve the skill directory as the folder containing this `SKILL.md`. In examples below, `SKILL_DIR` means that directory.
 
@@ -228,7 +233,7 @@ The resolver supports natural-language icon requests (e.g. `paper airplane icon`
 
 ## Preflight Validator — Craig Loop (Required)
 
-After generating a shortcut, run the validator in a **fix loop** (Craig Loop). Each iteration: read the errors, make a targeted fix, re-validate. Do not re-run without changing something.
+After generating a shortcut, run the validator in a **fix loop** (Craig Loop). Each iteration: read the errors, make a targeted fix, re-validate. Do not re-run without changing something. If the Codex `PostToolUse` hook reports validator feedback after an edit, treat that as the current validator run and fix the reported errors before signing.
 
 ```bash
 python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml

@@ -20,6 +20,7 @@
     "healthkit"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Shortcuts Playground",
     "shortDescription": "Build and validate Apple Shortcuts",

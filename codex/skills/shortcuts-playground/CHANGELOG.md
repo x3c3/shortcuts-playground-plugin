@@ -1,5 +1,18 @@
 # Autoresearch Loop Changelog
 
+## Date: May 15, 2026 — Codex PostToolUse auto-validation hook
+
+### Summary
+
+Added a Codex-native `PostToolUse` hook for the Craig Loop now that Codex supports plugin-bundled hooks.
+
+### Fixes Applied
+
+- Added `codex/hooks/hooks.json` and `codex/hooks/auto-validate.sh`.
+- Declared the hook in `codex/.codex-plugin/plugin.json`.
+- The hook handles Codex `apply_patch` payloads by extracting changed files from the patch text, then validates `.xml`/`.shortcut` files containing `WFWorkflowActions`.
+- Updated Codex docs to note that plugin hooks require `[features].plugin_hooks = true` and hook review/trust via `/hooks` when prompted.
+
 ## Date: May 12, 2026 — Calendar date filters and Time Between Dates wiring
 
 ### Summary

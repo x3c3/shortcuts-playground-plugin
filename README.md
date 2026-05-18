@@ -12,11 +12,11 @@ A project by [Federico Viticci](https://www.macstories.net).
 
 ## What It Does
 
-You can install Shortcuts Playground in either Claude Code or Codex. At the moment, the Claude Code version of the plugin offers a richer experience thannks to dedicated commands, agents, and hooks.
+You can install Shortcuts Playground in either Claude Code or Codex. At the moment, the Claude Code version of the plugin offers a richer experience thanks to dedicated commands and agents.
 
 - **Build from scratch.** In Claude Code, type `/shortcuts-playground:build` followed by a description of the shortcut you want. Claude designs the action list, wires variables, picks an icon, validates the XML through a self-correcting loop, and signs the result.
 - **Remix an existing shortcut.** Type `/shortcuts-playground:remix` with a path to an unsigned `.xml` shortcut file and describe what to change. The agent applies a surgical diff — preserving every action, UUID, and icon you didn't ask to touch.
-- **Automatic validation.** In Claude Code, a `PostToolUse` hook runs a structural validator on every file write. Errors feed back into the agent's context so it can fix them before signing. This is called a Craig Loop. It adds a few seconds of latency but dramatically improves output quality.
+- **Automatic validation.** Claude Code runs a `PostToolUse` hook on every file write. Codex can do the same when Codex plugin hooks are enabled with `[features].plugin_hooks = true`. Errors feed back into the agent's context so it can fix them before signing. This is called a Craig Loop. It adds a few seconds of latency but dramatically improves output quality.
 
 ---
 
@@ -86,7 +86,8 @@ codex plugin marketplace add /absolute/path/to/shortcuts-playground-plugin
    codex plugin marketplace add https://github.com/viticci/shortcuts-playground-plugin
    ```
 3. Open Plugins in the Codex app, switch to the Shortcuts Playground marketplace, open Shortcuts Playground, and click the plus button or `Add to Codex`.
-4. Start a new thread to load the plugin.
+4. To enable automatic validation, add `[features].plugin_hooks = true` to `~/.codex/config.toml`, then review/trust the hook from `/hooks` if Codex prompts for it.
+5. Start a new thread to load the plugin.
 
 ---
 
@@ -139,7 +140,7 @@ For best results, use Claude Opus 4.6/4.7 or GPT 5.5 as the underlying models. H
 | **Skill** (`skills/shortcuts-playground/`) | The complete Shortcuts knowledge base: ~12,000 lines of reference material, 56 best-practice rules, verified action identifiers from Apple's ToolKit v63, and 19 golden example XMLs. |
 | **Build agent** (`agents/shortcut-builder.md`) | Specialized agent that owns the full design, build, validate, sign, and archive loop for new shortcuts. |
 | **Remix agent** (`agents/shortcut-remixer.md`) | Specialized agent that applies a surgical diff to an existing unsigned XML shortcut. |
-| **Validation hook** (`hooks/`) | `PostToolUse` hook that runs the Craig Loop validator on every file write. Catches structural errors before signing. |
+| **Validation hook** (`hooks/`) | `PostToolUse` hook that runs the Craig Loop validator on Shortcuts XML writes. Codex requires `[features].plugin_hooks = true`. |
 | **CLI wrappers** (`bin/`) | `validate-shortcut`, `resolve-icon`, `sign-shortcut`, `shortcuts-playground-selftest` — added to Claude's PATH when the plugin is enabled. |
 | **Slash commands** (`commands/`) | `/shortcuts-playground:build` and `/shortcuts-playground:remix`. |
 
@@ -208,7 +209,7 @@ This repository ships plugins for two agent runtimes:
 | Folder | Runtime | Notes |
 |--------|---------|-------|
 | [`claude/`](claude/) | Claude Code | Full plugin with skill, slash commands, specialized agents, PostToolUse hook, and CLI wrappers. |
-| [`codex/`](codex/) | Codex | Codex-compatible plugin with bundled skill and validator/signing scripts. |
+| [`codex/`](codex/) | Codex | Codex-compatible plugin with bundled skill, validator/signing scripts, and opt-in PostToolUse validation hook. |
 
 The root `.claude-plugin/marketplace.json` installs the Claude Code plugin from `./claude`. The root `.agents/plugins/marketplace.json` installs the Codex plugin from `./codex`.
 

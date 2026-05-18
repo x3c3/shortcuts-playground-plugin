@@ -7,6 +7,9 @@ Codex plugin for building, remixing, validating, archiving, and signing Apple Sh
 ```text
 codex/
 ├── .codex-plugin/plugin.json
+├── hooks/
+│   ├── hooks.json
+│   └── auto-validate.sh
 ├── assets/
 │   ├── icon.png
 │   ├── icon-small.png
@@ -23,9 +26,21 @@ The Codex package intentionally omits Claude-only plugin features:
 
 - Slash commands
 - Specialized Claude agents
-- PostToolUse hooks
 - PATH wrapper commands under `bin/`
 - Claude `userConfig`
+
+Codex now supports plugin-bundled hooks. This package ships a `PostToolUse` hook
+that auto-validates changed `.xml`/`.shortcut` files containing
+`WFWorkflowActions`. Codex plugin hooks are opt-in in the current Codex release,
+so users must enable them in `~/.codex/config.toml`:
+
+```toml
+[features]
+plugin_hooks = true
+```
+
+After enabling plugin hooks, restart Codex and review/trust the hook from
+`/hooks` if prompted.
 
 The bundled skill uses direct script paths instead:
 

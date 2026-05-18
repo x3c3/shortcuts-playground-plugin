@@ -18,7 +18,7 @@ Install the parent Codex plugin, then ask Codex to build or remix a shortcut:
 - "Build a shortcut that asks for text input and shows it."
 - "Remix `/path/to/Shortcut.xml` to add a notification at the start."
 
-Codex plugins do not provide Claude-style slash commands, agents, hooks, or PATH wrapper bins. This skill uses direct script calls instead:
+Codex plugins do not provide Claude-style slash commands, agents, or PATH wrapper bins. This skill uses direct script calls instead:
 
 ```bash
 SKILL_DIR=/path/to/shortcuts-playground
@@ -28,6 +28,16 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 ```
 
 `sign_shortcut.sh` defaults to `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` or `~/Documents/Shortcuts Playground`, and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` or `anyone`.
+
+## Auto-Validation Hook
+
+The parent Codex plugin bundles a `PostToolUse` hook in `hooks/hooks.json`.
+When Codex plugin hooks are enabled with `[features].plugin_hooks = true`, the
+hook runs after supported file-edit tools and validates changed `.xml` or
+`.shortcut` files that contain `WFWorkflowActions`.
+
+Codex reports file edits as `apply_patch`, so the hook extracts changed paths
+from the patch payload before running `scripts/validate_shortcut.py`.
 
 ## What's Included
 
