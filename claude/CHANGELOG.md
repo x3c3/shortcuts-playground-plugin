@@ -4,6 +4,15 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ## Unreleased
 
+## [1.1.0] — 2026-06-08 (public release)
+
+### Fixed — issue regressions across Claude and Codex
+
+- Fixed Claude Code custom output-path handling by resolving `${user_config.output_dir}` and `${user_config.signing_mode}` directly in the builder/remixer agents, then passing explicit `--output-dir` and `--mode` flags to `sign-shortcut`.
+- Corrected HealthKit blood pressure labels in both runtime packages so `BloodPressureDiastolic` maps to `Diastolic Blood Pressure` and `BloodPressureSystolic` maps to `Systolic Blood Pressure`, matching Shortcuts.app.
+- Confirmed the Codex workspace sandbox can make Apple `shortcuts sign` return a misleading "isn't in the correct format" error for validator-clean plists; the signing helpers and docs now surface the sandbox-specific diagnosis.
+- Added focused issue-regression tests plus HealthKit label assertions in both wiring regression suites.
+
 ### Fixed — Send Message payload guidance
 
 - Clarified both Claude Code and Codex skill guidance so Send Message content always uses a named variable built with at least two Append Variable actions, even for single-type content.

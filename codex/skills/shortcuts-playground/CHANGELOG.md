@@ -1,5 +1,18 @@
 # Autoresearch Loop Changelog
 
+## Date: June 8, 2026 — 1.1.0 public issue regression release
+
+### Summary
+
+Released the public 1.1.0 package with fixes for HealthKit blood pressure labels and Codex sandbox signing diagnostics, plus mirrored Claude output-path configuration fixes in the repository package.
+
+### Fixes Applied
+
+- Corrected HealthKit blood pressure labels to `Diastolic Blood Pressure` and `Systolic Blood Pressure`.
+- Added sandbox-specific guidance when Apple `shortcuts sign` reports the misleading "isn't in the correct format" error under Codex workspace sandboxing.
+- Added focused issue-regression tests and HealthKit label assertions in the wiring regression suite.
+- Bumped the Codex plugin manifest to `1.1.0`.
+
 ## Date: May 15, 2026 — Codex PostToolUse auto-validation hook
 
 ### Summary

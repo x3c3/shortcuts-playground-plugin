@@ -1,5 +1,18 @@
 # Autoresearch Loop Changelog
 
+## Date: June 8, 2026 — 1.1.0 public issue regression release
+
+### Summary
+
+Released the public 1.1.0 package with fixes for Claude output-path configuration, HealthKit blood pressure labels, and Codex sandbox signing diagnostics.
+
+### Fixes Applied
+
+- Resolved Claude `${user_config.output_dir}` and `${user_config.signing_mode}` directly in builder/remixer agents, then passed explicit `--output-dir` and `--mode` flags to `sign-shortcut`.
+- Corrected HealthKit blood pressure labels to `Diastolic Blood Pressure` and `Systolic Blood Pressure`.
+- Added sandbox-specific guidance when Apple `shortcuts sign` reports the misleading "isn't in the correct format" error under Codex workspace sandboxing.
+- Added focused issue-regression tests and HealthKit label assertions in the wiring regression suite.
+
 ## Date: May 12, 2026 — Calendar date filters and Time Between Dates wiring
 
 ### Summary
