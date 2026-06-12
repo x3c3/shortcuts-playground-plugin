@@ -15,6 +15,7 @@ import json
 import os
 import plistlib
 import re
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -116,6 +117,21 @@ EXISTENCE_CONDITION_CODES = {
 
 # All codes the validator recognizes. Anything outside this set is rejected.
 ALL_CONDITION_CODES = STRING_CONDITION_CODES | NUMBER_CONDITION_CODES | EXISTENCE_CONDITION_CODES
+
+LIST_PRODUCING_ACTIONS = {
+    "is.workflow.actions.list",
+    "is.workflow.actions.additemtolist",
+}
+
+TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
+    # ToolKit v78 was captured from macOS 27 Golden Gate. Keep this gated so
+    # older macOS hosts do not accidentally validate shortcuts they cannot run.
+    "toolkit-v78": 27,
+}
+TARGET_MACOS_ENV_VARS = (
+    "SHORTCUTS_PLAYGROUND_TARGET_MACOS",
+    "CLAUDE_PLUGIN_OPTION_TARGET_MACOS",
+)
 
 REQUIRED_INPUT_ACTIONS = {
     # Actions that should always have explicit input wired
@@ -651,12 +667,77 @@ def parse_third_party_md(text: str) -> set[str]:
     return ids
 
 
-def load_packaged_toolkit_ids(skill_dir: Path) -> set[str]:
+def detect_host_macos_major() -> int | None:
+    """Return the running macOS major version, or None outside macOS."""
+
+    try:
+        proc = subprocess.run(
+            ["sw_vers", "-productVersion"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except (OSError, ValueError):
+        return None
+    if proc.returncode != 0:
+        return None
+    version = proc.stdout.strip()
+    if not version:
+        return None
+    first = version.split(".", 1)[0]
+    try:
+        return int(first)
+    except ValueError:
+        return None
+
+
+def resolve_target_macos_major(raw: str | None = None) -> int | None:
+    """Resolve CLI/env target macOS.
+
+    Returns None for "latest"/"all" because that intentionally includes every
+    packaged snapshot. "auto" uses the host macOS version and falls back to
+    latest when the host is not macOS.
+    """
+
+    value = raw
+    if value is None:
+        for env_name in TARGET_MACOS_ENV_VARS:
+            env_value = os.environ.get(env_name)
+            if env_value:
+                value = env_value
+                break
+    if value is None:
+        value = "auto"
+    normalized = value.strip().lower()
+    if normalized in {"", "auto", "host"}:
+        return detect_host_macos_major()
+    if normalized in {"latest", "all", "any"}:
+        return None
+    if normalized.startswith("macos"):
+        normalized = normalized.removeprefix("macos").strip()
+    try:
+        return int(normalized.split(".", 1)[0])
+    except ValueError:
+        return None
+
+
+def _toolkit_snapshot_min_macos_major(payload: dict, path: Path) -> int:
+    version = payload.get("version")
+    if isinstance(version, str) and version in TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR:
+        return TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR[version]
+    if isinstance(version, str):
+        match = re.search(r"v(\d+)", version)
+        if match and int(match.group(1)) >= 78:
+            return 27
+    return 0
+
+
+def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, set[str]]]:
+    """Load bundled ToolKit snapshots as (version, minimum macOS, ids)."""
+
     data_dir = skill_dir / "data"
-    candidates = [
-        data_dir / "toolkit-v63-tool-ids.json",
-    ]
-    allowed: set[str] = set()
+    candidates = sorted(data_dir.glob("toolkit-v*-tool-ids.json"))
+    snapshots: list[tuple[str, int, set[str]]] = []
     for path in candidates:
         if not path.exists():
             continue
@@ -664,11 +745,17 @@ def load_packaged_toolkit_ids(skill_dir: Path) -> set[str]:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
+        if not isinstance(payload, dict):
+            continue
+        version = payload.get("version")
+        if not isinstance(version, str) or not version:
+            version = path.stem
+        ids_for_snapshot: set[str] = set()
         ids = payload.get("ids") if isinstance(payload, dict) else None
         if isinstance(ids, list):
             for item in ids:
                 if isinstance(item, str) and item:
-                    allowed.add(item)
+                    ids_for_snapshot.add(item)
         exceptions = (
             payload.get("control_flow_exceptions_missing_from_tools_table")
             if isinstance(payload, dict)
@@ -677,15 +764,52 @@ def load_packaged_toolkit_ids(skill_dir: Path) -> set[str]:
         if isinstance(exceptions, list):
             for item in exceptions:
                 if isinstance(item, str) and item:
-                    allowed.add(item)
+                    ids_for_snapshot.add(item)
+        snapshots.append((version, _toolkit_snapshot_min_macos_major(payload, path), ids_for_snapshot))
+    return snapshots
+
+
+def load_packaged_toolkit_ids(skill_dir: Path, target_macos_major: int | None = None) -> set[str]:
+    """Load bundled ToolKit ID snapshots for the requested target macOS.
+
+    Each snapshot is a portable allowlist extracted from Apple's ToolKit SQLite
+    metadata. The validator intentionally reads packaged JSON only; it should
+    not depend on the user's live Shortcuts database during normal validation.
+    """
+
+    allowed: set[str] = set()
+    for _, min_macos_major, ids in _load_packaged_toolkit_snapshots(skill_dir):
+        if target_macos_major is not None and min_macos_major > target_macos_major:
+            continue
+        allowed |= ids
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
     allowed |= HEALTH_IOS_ONLY_ACTIONS
     return allowed
 
 
-def load_allowed_ids(skill_dir: Path) -> set[str]:
+def load_future_toolkit_id_reasons(skill_dir: Path, target_macos_major: int | None) -> dict[str, str]:
+    """Return IDs excluded by the target macOS, with a human-readable reason."""
+
+    if target_macos_major is None:
+        return {}
+    snapshots = _load_packaged_toolkit_snapshots(skill_dir)
+    included: set[str] = set()
+    for _, min_macos_major, ids in snapshots:
+        if min_macos_major <= target_macos_major:
+            included |= ids
+    future: dict[str, str] = {}
+    for version, min_macos_major, ids in snapshots:
+        if min_macos_major <= target_macos_major:
+            continue
+        reason = f"macOS {min_macos_major}+ ({version})"
+        for ident in ids - included:
+            future[ident] = reason
+    return future
+
+
+def load_allowed_ids(skill_dir: Path, target_macos_major: int | None = None) -> set[str]:
     allowed = set()
-    allowed |= load_packaged_toolkit_ids(skill_dir)
+    allowed |= load_packaged_toolkit_ids(skill_dir, target_macos_major)
 
     # Keep markdown references as additive fallback, especially for backup-only third-party IDs.
     actions_md = skill_dir / "ACTIONS.md"
@@ -701,6 +825,8 @@ def load_allowed_ids(skill_dir: Path) -> set[str]:
 
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
     allowed |= HEALTH_IOS_ONLY_ACTIONS
+    future_ids = load_future_toolkit_id_reasons(skill_dir, target_macos_major)
+    allowed -= set(future_ids)
     return allowed
 
 
@@ -1220,6 +1346,17 @@ def _extract_input_variable_names(value) -> set[str]:
     return {name for name in iter_variable_names(value) if isinstance(name, str) and name.strip()}
 
 
+def _reassigned_list_variable_name(value, set_counts: dict[str, int], list_set_counts: dict[str, int]) -> str | None:
+    name = _extract_input_variable_name(value)
+    if (
+        name
+        and set_counts.get(name, 0) > 1
+        and list_set_counts.get(name, 0) > 1
+    ):
+        return name
+    return None
+
+
 def _input_action_output_uuids(value) -> list[str]:
     if not isinstance(value, dict):
         return []
@@ -1377,9 +1514,11 @@ def validate(
     allowed_ids: set[str],
     allowed_glyph_ids: Optional[set[int]] = None,
     allowed_icon_colors: Optional[set[int]] = None,
+    unavailable_ids: Optional[dict[str, str]] = None,
 ) -> Tuple[list[str], Optional[Tuple[int, str, str]]]:
     errors: list[str] = []
     first_error: Optional[Tuple[int, str, str]] = None
+    unavailable_ids = unavailable_ids or {}
     actions = plist.get("WFWorkflowActions", [])
     comments: list[str] = []
     uuid_to_ident: dict[str, str] = {}
@@ -1390,6 +1529,8 @@ def validate(
     repeat_stack: list[dict] = []
     repeat_end_uuids: dict[str, str] = {}
     defined_vars: set[str] = set()
+    setvariable_counts: dict[str, int] = {}
+    list_variable_set_counts: dict[str, int] = {}
     uuid_to_var_name: dict[str, str] = {}
     var_format_dates: dict[str, dict] = {}
     cents_vars: set[str] = set()
@@ -1789,11 +1930,13 @@ def validate(
             name = params.get("WFVariableName")
             if isinstance(name, str) and name.strip():
                 defined_vars.add(name)
+                setvariable_counts[name] = setvariable_counts.get(name, 0) + 1
                 if "cents" in name.lower():
                     cents_vars.add(name)
                 wfinput = params.get("WFInput")
                 out_uuids = _input_action_output_uuids(wfinput)
                 source_var_name = _extract_input_variable_name(wfinput)
+                list_source = False
                 weather_source = bool(source_var_name and source_var_name in weather_source_vars)
                 location_source = bool(source_var_name and source_var_name in location_source_vars)
                 health_sample_source = bool(
@@ -1801,6 +1944,8 @@ def validate(
                 )
                 for source_uuid in out_uuids:
                     source_ident = uuid_to_ident.get(source_uuid)
+                    if source_ident in LIST_PRODUCING_ACTIONS:
+                        list_source = True
                     if source_ident == "is.workflow.actions.format.date":
                         var_format_dates[name] = uuid_to_params.get(source_uuid, {})
                     if source_ident in WEATHER_SOURCE_ACTIONS:
@@ -1815,6 +1960,8 @@ def validate(
                     location_source_vars.add(name)
                 if health_sample_source:
                     health_sample_source_vars.add(name)
+                if list_source:
+                    list_variable_set_counts[name] = list_variable_set_counts.get(name, 0) + 1
                 if (
                     "hour" in name.lower()
                     and any(
@@ -1841,16 +1988,30 @@ def validate(
         if ident:
             if ident.startswith("is.workflow.actions."):
                 if ident not in allowed_ids:
-                    hint = ACTION_ALIAS_HINTS.get(ident)
-                    if hint:
+                    unavailable_reason = unavailable_ids.get(ident)
+                    if unavailable_reason:
                         errors.append(
-                            f"Unknown action identifier at index {idx}: {ident} (use {hint})"
+                            f"Action identifier requires {unavailable_reason} at index {idx}: {ident}. "
+                            "Set --target-macos 27 or SHORTCUTS_PLAYGROUND_TARGET_MACOS=27 only when building for Golden Gate."
                         )
                     else:
-                        errors.append(f"Unknown action identifier at index {idx}: {ident}")
+                        hint = ACTION_ALIAS_HINTS.get(ident)
+                        if hint:
+                            errors.append(
+                                f"Unknown action identifier at index {idx}: {ident} (use {hint})"
+                            )
+                        else:
+                            errors.append(f"Unknown action identifier at index {idx}: {ident}")
             elif ident.startswith("com.apple."):
                 if ident not in allowed_ids:
-                    errors.append(f"Unknown AppIntent identifier at index {idx}: {ident}")
+                    unavailable_reason = unavailable_ids.get(ident)
+                    if unavailable_reason:
+                        errors.append(
+                            f"AppIntent identifier requires {unavailable_reason} at index {idx}: {ident}. "
+                            "Set --target-macos 27 or SHORTCUTS_PLAYGROUND_TARGET_MACOS=27 only when building for Golden Gate."
+                        )
+                    else:
+                        errors.append(f"Unknown AppIntent identifier at index {idx}: {ident}")
             else:
                 # Accept unknown vendor-prefixed third-party identifiers so shared
                 # skills remain usable without local ToolKit extraction.
@@ -1962,14 +2123,27 @@ def validate(
                         errors.append(f"Todoist task update URL missing task ID placeholder at index {idx}")
                     break
 
-        # Conditional must be fully specified for mode 0 (start). Verified against
-        # an Apple-built sample covering codes 0, 1, 2, 3, 4, 5, 8, 9, 99, 100, 101,
-        # 999, 1003, plus the multi-condition (Any/All are true) WFConditions pattern.
+        # Conditional tests must be fully specified for If starts and macOS 27's
+        # Otherwise If middles. Plain Otherwise is also mode 1, but has no
+        # WFCondition/WFInput fields.
         if ident == "is.workflow.actions.conditional":
             mode = _coerce_control_flow_mode(params)
             if mode is None:
                 mode = 0
-            if mode != 0:
+            if mode == 2:
+                continue
+            condition_keys = {
+                "WFCondition",
+                "WFInput",
+                "WFConditions",
+                "WFConditionalActionString",
+                "WFNumberValue",
+                "WFAnotherNumber",
+            }
+            has_condition_fields = any(key in params for key in condition_keys)
+            if mode == 1 and not has_condition_fields:
+                continue
+            if mode not in (0, 1):
                 continue
 
             cond = params.get("WFCondition")
@@ -2042,6 +2216,20 @@ def validate(
                                     f"Conditional template {tidx} (string code {tcond}) missing "
                                     f"WFConditionalActionString at index {idx}"
                                 )
+                            if tcond == 99:
+                                reassigned_name = _reassigned_list_variable_name(
+                                    tinp,
+                                    setvariable_counts,
+                                    list_variable_set_counts,
+                                )
+                                if reassigned_name:
+                                    errors.append(
+                                        f"Conditional template {tidx} checks list variable "
+                                        f"'{reassigned_name}' after it was set multiple times at index {idx}; "
+                                        "macOS 27 imports this list-contains pattern with a blank comparison value. "
+                                        "Reference the final List/Add to List action output directly, or assign it "
+                                        "once to a fresh final variable name before the If."
+                                    )
                             if tcond in NUMBER_CONDITION_CODES and template.get("WFNumberValue") is None:
                                 errors.append(
                                     f"Conditional template {tidx} (numeric code {tcond}) missing "
@@ -2095,6 +2283,20 @@ def validate(
                         if ident_inp == "is.workflow.actions.getvalueforkey":
                             errors.append(
                                 f"Conditional compares Dictionary Value directly at index {idx}; wrap in Text first"
+                            )
+                    if cond == 99:
+                        reassigned_name = _reassigned_list_variable_name(
+                            inp,
+                            setvariable_counts,
+                            list_variable_set_counts,
+                        )
+                        if reassigned_name:
+                            errors.append(
+                                f"Conditional checks list variable '{reassigned_name}' after it was set "
+                                f"{setvariable_counts.get(reassigned_name, 0)} times at index {idx}; "
+                                "macOS 27 imports this list-contains pattern with a blank comparison value. "
+                                "Reference the final List/Add to List action output directly, or assign it "
+                                "once to a fresh final variable name before the If."
                             )
             elif cond in NUMBER_CONDITION_CODES:
                 if params.get("WFNumberValue") is None:
@@ -3163,6 +3365,14 @@ def validate(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate Shortcuts output for empty params and unknown actions")
     parser.add_argument("shortcut", help="Path to .xml or .shortcut file")
+    parser.add_argument(
+        "--target-macos",
+        default=None,
+        help=(
+            "Target macOS major version for bundled ToolKit availability. "
+            "Use 26, 27, auto (default), or latest/all to include every packaged snapshot."
+        ),
+    )
     args = parser.parse_args()
 
     shortcut_path = Path(args.shortcut).expanduser().resolve()
@@ -3171,7 +3381,9 @@ def main() -> int:
         return 1
 
     skill_dir = Path(__file__).resolve().parents[1]
-    allowed_ids = load_allowed_ids(skill_dir)
+    target_macos_major = resolve_target_macos_major(args.target_macos)
+    allowed_ids = load_allowed_ids(skill_dir, target_macos_major)
+    unavailable_ids = load_future_toolkit_id_reasons(skill_dir, target_macos_major)
     allowed_glyph_ids, allowed_icon_colors = load_icon_metadata(skill_dir)
 
     try:
@@ -3180,7 +3392,13 @@ def main() -> int:
         print(f"Failed to read plist: {e}", file=sys.stderr)
         return 1
 
-    errors, first_error = validate(plist, allowed_ids, allowed_glyph_ids, allowed_icon_colors)
+    errors, first_error = validate(
+        plist,
+        allowed_ids,
+        allowed_glyph_ids,
+        allowed_icon_colors,
+        unavailable_ids,
+    )
 
     # Repeating-hex UUID check (agent placeholder detection). Runs on the raw
     # file text so we catch UUIDs in WFWorkflowActionParameters.UUID,

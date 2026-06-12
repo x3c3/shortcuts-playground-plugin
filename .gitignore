@@ -21,3 +21,8 @@ __pycache__/
 # Ad-hoc test output
 /tmp-shortcuts/
 /.local-test-output/
+
+# Local reverse-engineering/research helpers and notes.
+# Shippable plugin metadata lives under codex/ and claude/ instead.
+/docs/
+/scripts/

@@ -14,13 +14,13 @@ Writing valid Shortcuts plists by hand — even with an LLM — is miserable. Th
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **Skill** | `skills/shortcuts-playground/` | The complete 12k-line Shortcuts knowledge base: action identifiers, wiring rules, 56 `BEST_PRACTICES.md` entries, golden example XMLs, ToolKit v63 metadata. Claude loads it automatically when you ask for a shortcut. |
+| **Skill** | `skills/shortcuts-playground/` | The complete 12k-line Shortcuts knowledge base: action identifiers, wiring rules, 57 `BEST_PRACTICES.md` entries, golden example XMLs, ToolKit v63 and target-gated macOS 27 v78 ID snapshots, plus reviewed static Apple-derived macOS 27 grounding metadata. Claude loads it automatically when you ask for a shortcut. |
 | **Build agent** | `agents/shortcut-builder.md` | `shortcut-builder` — specialized agent that owns the full design → build → validate → sign → archive loop for new shortcuts. |
 | **Remix agent** | `agents/shortcut-remixer.md` | `shortcut-remixer` — specialized agent that applies a surgical natural-language diff to an existing unsigned XML shortcut. Preserves UUIDs, icon, metadata, and every action the user didn't ask to touch. |
 | **Hook** | `hooks/hooks.json` + `hooks/auto-validate.sh` | `PostToolUse` hook that runs the Craig Loop validator on every `Write`/`Edit` producing a Shortcuts plist — applies to BOTH agents. Exit code 2 + stderr feeds validator output back into Claude's context so the model can iterate. |
 | **CLI** | `bin/validate-shortcut`, `bin/resolve-icon`, `bin/sign-shortcut`, `bin/shortcuts-playground-selftest` | Bare commands added to Claude's Bash `PATH` whenever the plugin is enabled. Work from any working directory. |
 | **Slash commands** | `commands/build.md`, `commands/remix.md` | `/shortcuts-playground:build <brief>` — create from scratch. `/shortcuts-playground:remix <path> <idea>` — diff an existing unsigned `.xml` file. |
-| **User config** | `plugin.json` → `userConfig` | `output_dir` (archive root) and `signing_mode` (`anyone` or `people-who-know-me`). See [Configuration](#configuration) for how to set these. |
+| **User config** | `plugin.json` → `userConfig` | `output_dir` (archive root), `signing_mode` (`anyone` or `people-who-know-me`), and `target_macos` (`auto`, `26`, `27`, or `latest`). See [Configuration](#configuration) for how to set these. |
 
 ## Requirements
 
@@ -104,12 +104,13 @@ For CI environments without the macOS `shortcuts` CLI, set `SHORTCUTS_PLAYGROUND
 
 ## Configuration
 
-The plugin exposes two `userConfig` values in `plugin.json`:
+The plugin exposes three `userConfig` values in `plugin.json`:
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
 | `output_dir` | `directory` | `~/Documents/Shortcuts Playground` | Root directory where unsigned XML archives and signed `.shortcut` files are written. |
 | `signing_mode` | `string` | `anyone` | Passed to `shortcuts sign`. Use `anyone` for public distribution or `people-who-know-me` for contacts only. |
+| `target_macos` | `string` | `auto` | Validator action-availability target. Use `auto` for host detection, `27` for Golden Gate-only shortcuts, or `latest` to include every packaged snapshot. |
 
 You can set these in three ways, from most to least explicit:
 
@@ -120,21 +121,22 @@ You can set these in three ways, from most to least explicit:
      "pluginConfigs": {
        "shortcuts-playground@shortcuts-playground": {
          "options": {
-           "output_dir": "/Users/you/Documents/Shortcuts Playground",
-           "signing_mode": "anyone"
+          "output_dir": "/Users/you/Documents/Shortcuts Playground",
+          "signing_mode": "anyone",
+          "target_macos": "auto"
          }
        }
      }
    }
    ```
-   Claude Code substitutes non-sensitive values into plugin skill/agent content as `${user_config.<key>}` and exports each value as `CLAUDE_PLUGIN_OPTION_<KEY_UPPERCASED>` (e.g. `CLAUDE_PLUGIN_OPTION_OUTPUT_DIR`) for plugin subprocesses. The bundled agents resolve `${user_config.output_dir}` first and pass the resulting path to `sign-shortcut --output-dir`, so this setting controls both draft and signed output paths.
+   Claude Code substitutes non-sensitive values into plugin skill/agent content as `${user_config.<key>}` and exports each value as `CLAUDE_PLUGIN_OPTION_<KEY_UPPERCASED>` (e.g. `CLAUDE_PLUGIN_OPTION_OUTPUT_DIR`) for plugin subprocesses. The bundled agents resolve `${user_config.output_dir}` first and pass the resulting path to `sign-shortcut --output-dir`, so this setting controls both draft and signed output paths. `target_macos` is read by the validator as `CLAUDE_PLUGIN_OPTION_TARGET_MACOS`.
 3. **Environment variable override.** If both above fail, you can always set the env var directly for a one-off build:
    ```bash
    CLAUDE_PLUGIN_OPTION_OUTPUT_DIR=/custom/dir sign-shortcut draft.xml --name "My Shortcut"
    ```
    Or pass `--output-dir` / `--mode` flags directly to `sign-shortcut` to bypass config entirely.
 
-If none of these are set, the plugin falls back to `~/Documents/Shortcuts Playground/` and `anyone`. Those defaults exist so first-time install just works.
+If none of these are set, the plugin falls back to `~/Documents/Shortcuts Playground/`, `anyone`, and `auto`. Those defaults exist so first-time install just works.
 
 For best results, store `output_dir` as an absolute path such as `/Users/you/Developer/Shortcuts`. The agents also expand leading `~/` and literal `$HOME/` values, but absolute paths avoid ambiguity across shells and plugin subprocesses.
 
@@ -227,7 +229,7 @@ shortcuts-playground-plugin/
 │       ├── APPINTENTS.md
 │       ├── PARAMETER_TYPES.md
 │       ├── ...                  # 13 reference markdown files total
-│       ├── data/                # ToolKit v63 + glyph/color JSON
+│       ├── data/                # ToolKit ID snapshots + glyph/color JSON
 │       ├── golden-shortcuts/    # 19 curated example XMLs
 │       └── scripts/             # Python implementations
 ├── agents/
@@ -288,7 +290,7 @@ The first covers 40 Weather Detail cases, 40 Location parameter cases, and 12 Se
 ## Credits
 
 - Built at **MacStories**, with Claude.
-- Grew out of the standalone `shortcuts-generator` Claude Code skill, which bundles action identifiers, validator heuristics, and wiring rules derived from Apple's ToolKit v63 database.
+- Grew out of the standalone `shortcuts-generator` Claude Code skill, which bundles action identifiers, validator heuristics, and wiring rules derived from Apple's ToolKit snapshots.
 
 ## License
 

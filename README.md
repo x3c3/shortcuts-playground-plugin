@@ -8,6 +8,8 @@ Shortcuts Playground is a plugin for Claude Code and Codex that lets you turn an
 
 Under the hood, shortcuts have always been XML files that get signed and encrypted into a special, Apple-only `.shortcut` format. Shortcuts Playground ships a comprehensive knowledge base that teaches Claude and Codex how Shortcuts actions work, what syntax they use, and how they connect to one another. Agents generate the XML, validate it through a loop, and sign it using Apple's native `shortcuts` CLI.
 
+For macOS 27 Golden Gate, the plugin also ships target-gated ToolKit v78 action coverage plus a reviewed static Apple-derived grounding catalog. That catalog is generated from Apple's local ToolKit/ToolRenderer/WorkflowKit metadata on a maintainer Mac, then packaged as JSON so existing users do not need macOS 27 or private Apple frameworks.
+
 The result is a valid shortcut, built from a sentence.
 
 A project by [Federico Viticci](https://www.macstories.net). Read more [here](https://www.macstories.net/stories/introducing-shortcuts-playground/).‎
@@ -143,7 +145,7 @@ For best results, use Claude Opus 4.6/4.7 or GPT 5.5 as the underlying models. H
 
 | Component | Purpose |
 |-----------|---------|
-| **Skill** (`skills/shortcuts-playground/`) | The complete Shortcuts knowledge base: ~12,000 lines of reference material, 56 best-practice rules, verified action identifiers from Apple's ToolKit v63, and 19 golden example XMLs. |
+| **Skill** (`skills/shortcuts-playground/`) | The complete Shortcuts knowledge base: ~12,000 lines of reference material, 57 best-practice rules, verified action identifiers from Apple's ToolKit v63 plus target-gated macOS 27 ToolKit v78 coverage, and 19 golden example XMLs. |
 | **Build agent** (`agents/shortcut-builder.md`) | Specialized agent that owns the full design, build, validate, sign, and archive loop for new shortcuts. |
 | **Remix agent** (`agents/shortcut-remixer.md`) | Specialized agent that applies a surgical diff to an existing unsigned XML shortcut. |
 | **Validation hook** (`hooks/`) | `PostToolUse` hook that runs the Craig Loop validator on Shortcuts XML writes. Codex requires `[features].plugin_hooks = true`. |
@@ -172,14 +174,15 @@ To change the output directory, edit `~/.claude/settings.json`:
   "pluginConfigs": {
     "shortcuts-playground@shortcuts-playground": {
       "options": {
-        "output_dir": "/Users/you/Documents/Shortcuts Playground"
+        "output_dir": "/Users/you/Documents/Shortcuts Playground",
+        "target_macos": "auto"
       }
     }
   }
 }
 ```
 
-The plugin also supports a `signing_mode` option (`anyone` for public distribution, `people-who-know-me` for contacts only). Default is `anyone`.
+The plugin also supports `signing_mode` (`anyone` for public distribution, `people-who-know-me` for contacts only) and `target_macos` (`auto`, `26`, `27`, or `latest`). Default validation target is `auto`, which detects the host macOS version. Use `target_macos = "27"` only when intentionally building Golden Gate-only shortcuts.
 
 ---
 

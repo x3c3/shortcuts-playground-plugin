@@ -179,7 +179,7 @@ Reference the current item using a **named Variable** (Type=Variable):
 
 ---
 
-## Conditional (If/Otherwise)
+## Conditional (If/Otherwise/Otherwise If)
 
 Execute different actions based on a condition.
 
@@ -187,7 +187,7 @@ Execute different actions based on a condition.
 | Mode | Action | Description |
 |------|--------|-------------|
 | 0 | If | Start conditional, define condition |
-| 1 | Otherwise | Else branch |
+| 1 | Otherwise / Otherwise If | Else branch, or a conditional middle branch when condition fields are present |
 | 2 | End If | Close conditional |
 
 ### Template (single-condition If)
@@ -260,6 +260,70 @@ Execute different actions based on a condition.
 </dict>
 ```
 
+### Otherwise If (macOS 27+)
+
+`Otherwise If` is not a new action identifier and does not use a new control-flow mode. It is still `is.workflow.actions.conditional` with `WFControlFlowMode = 1`; the difference from plain Otherwise is that it also carries the same condition fields as an If start (`WFCondition`, `WFInput`, and the required literal field for that condition code).
+
+Plain Otherwise:
+
+```xml
+<key>WFControlFlowMode</key>
+<integer>1</integer>
+```
+
+Otherwise If:
+
+```xml
+<dict>
+    <key>WFWorkflowActionIdentifier</key>
+    <string>is.workflow.actions.conditional</string>
+    <key>WFWorkflowActionParameters</key>
+    <dict>
+        <key>GroupingIdentifier</key>
+        <string>IF-GROUP-UUID</string>
+        <key>WFControlFlowMode</key>
+        <integer>1</integer>
+        <key>WFCondition</key>
+        <integer>99</integer>
+        <key>WFConditionalActionString</key>
+        <string>Four</string>
+        <key>WFInput</key>
+        <dict>
+            <key>Type</key>
+            <string>Variable</string>
+            <key>Variable</key>
+            <dict>
+                <key>Value</key>
+                <dict>
+                    <key>Type</key>
+                    <string>Variable</string>
+                    <key>VariableName</key>
+                    <string>List Variable</string>
+                </dict>
+                <key>WFSerializationType</key>
+                <string>WFTextTokenAttachment</string>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+```
+
+Place any `Otherwise If` actions after the initial mode 0 If branch and before a final plain Otherwise. Use the same `GroupingIdentifier` for every branch in the block.
+
+### macOS 27 List Contains Import Trap
+
+When checking whether a list contains an item, avoid this pattern:
+
+1. Set `Fruit List` from a List action.
+2. Add an item to `Fruit List`.
+3. Set `Fruit List` again from the Add to List output.
+4. Run `If Fruit List contains "Orange"`.
+
+On macOS 27, imported shortcuts using that repeated-name list pattern can show a blank comparison chip even though the plist contains `WFConditionalActionString`. Use one of these safe shapes instead:
+
+- Reference the final `List`/`Add to List` action output directly in the conditional `WFInput`.
+- Or use an intermediate name while mutating (for example `Working Fruit List`) and assign the final list once to a fresh name (`Fruit List`) immediately before the If.
+
 ### Condition Codes (DEFINITIVE — verified against an Apple-built sample shortcut)
 
 **ALWAYS use integer codes** for `WFCondition`. String names may import but degrade at runtime.
@@ -326,7 +390,7 @@ For `Type=Variable` referencing a named variable instead of an `ActionOutput`, r
 ```
 
 **Placement rules:**
-- `WFInput` belongs ONLY on Mode 0 (If start). Never on Mode 1 (Otherwise) or Mode 2 (End If) — those should contain only `GroupingIdentifier` + `WFControlFlowMode`.
+- `WFInput` belongs on Mode 0 (If start) and on Mode 1 only when the action is an Otherwise If. Plain Otherwise (mode 1 with no condition fields) and End If (mode 2) carry only `GroupingIdentifier` + `WFControlFlowMode`.
 - The `WFInput` field itself is a dict with `Type` = `"Variable"` and a nested `Variable` dict. Bare `WFTextTokenAttachment` (without the `Type`/`Variable` wrapper) imports as blank in the editor.
 
 ### "is between" (code 1003)
@@ -466,7 +530,7 @@ Apple's modern Shortcuts conditional supports a single If block testing **multip
 - Templates inside the same multi-condition block don't need a `GroupingIdentifier` — the parent action holds it.
 - Apple's table-template format may include `WFContentPredicateBoundedDate` (a boolean) for date-aware filters; emit `<false/>` unless the conditions involve dates.
 
-The Otherwise / End If actions for a multi-condition block are identical to the single-condition pattern: just `GroupingIdentifier` + `WFControlFlowMode` (1 or 2).
+Plain Otherwise / End If actions for a multi-condition block are identical to the single-condition pattern: just `GroupingIdentifier` + `WFControlFlowMode` (1 or 2). A macOS 27+ Otherwise If middle branch can carry condition fields on mode 1.
 
 ---
 
@@ -708,3 +772,6 @@ Both need only `WFWorkflowActionIdentifier` and an empty `WFWorkflowActionParame
 
 10. **Forgetting `WFAnotherNumber` on `is between` (code 1003)**
     - Code 1003 needs both `WFNumberValue` (lower bound, literal string) and `WFAnotherNumber` (upper bound, token attachment). Missing `WFAnotherNumber` imports as an empty upper-bound field.
+
+11. **Treating Otherwise If as a separate action**
+    - macOS 27 serializes Otherwise If as `is.workflow.actions.conditional` with `WFControlFlowMode = 1` plus condition fields. Plain Otherwise is the same mode with no condition fields.

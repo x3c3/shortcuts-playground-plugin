@@ -1,5 +1,24 @@
 # Autoresearch Loop Changelog
 
+## Date: June 12, 2026 - macOS 27 Golden Gate ToolKit v78 review
+
+### Summary
+
+Added early macOS 27 validation support after inspecting the local Shortcuts ToolKit v78 database on macOS 27.0 build 26A5353q.
+
+### Fixes Applied
+
+- Added `data/toolkit-v78-tool-ids.json` with 2,731 identifiers from the local macOS 27 ToolKit database.
+- Added `data/macos27-shortpy-grounding.json`, a reviewed static Apple-derived macOS 27 grounding catalog with ToolKit `pythonName`, Apple Shortpy keyword, ToolRenderer utility, and ShortcutsLanguage syntax evidence.
+- Added `scripts/lookup_action_grounding.py` to inspect that static catalog without reading live Shortcuts databases or loading private Apple frameworks.
+- Updated `validate_shortcut.py` to load packaged `toolkit-v*-tool-ids.json` snapshots by target macOS version instead of hard-coding v63. The default target is `auto`; `--target-macos 27` / `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` opt into Golden Gate-only IDs.
+- Documented `SHORTCUTS_PLAYGROUND_TARGET_MACOS` for explicit macOS 27 validation opt-in on older hosts.
+- Documented the eight v78-only classic Shortcuts actions found locally, including `is.workflow.actions.additemtolist` and `is.workflow.actions.getselectedtext`.
+- Documented the verified macOS 27 `Otherwise If` control-flow shape and `Add Item to List` serialization from Federico's local samples.
+- Added a validator guard and docs for the macOS 27 import bug where list `contains` conditionals lose the comparison value when they test a named list variable that has been repeatedly reassigned from List/Add to List outputs.
+- Kept local compatibility-review notes outside the packaged plugin; only the portable metadata and validator behavior ship.
+- Added issue-regression coverage proving v78-only actions are target-gated and the macOS 27 `Otherwise If` shape validates.
+
 ## Date: June 8, 2026 — 1.1.0 public issue regression release
 
 ### Summary

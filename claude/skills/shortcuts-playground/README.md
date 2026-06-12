@@ -35,7 +35,7 @@ If `shortcuts sign` reports that a validator-clean plist "isn't in the correct f
 |------|-------------|
 | [SKILL.md](SKILL.md) | Skill definition with Claude Code workflow rules |
 | [ACTIONS.md](ACTIONS.md) | WF*Action identifiers and parameters |
-| [APPINTENTS.md](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups) |
+| [APPINTENTS.md](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups, with v78 IDs allowlisted separately) |
 | [PARAMETER_TYPES.md](PARAMETER_TYPES.md) | Parameter value types and serialization formats |
 | [PLIST_FORMAT.md](PLIST_FORMAT.md) | Complete plist structure |
 | [BEST_PRACTICES.md](BEST_PRACTICES.md) | Mandatory generation guidelines |
@@ -49,12 +49,15 @@ If `shortcuts sign` reports that a validator-clean plist "isn't in the correct f
 | [JAVASCRIPT_WEBPAGE.md](JAVASCRIPT_WEBPAGE.md) | Run JavaScript on Webpage rules |
 | [DATE_TIME.md](DATE_TIME.md) | Date/time recipes and custom format guidance |
 | [THIRD_PARTY_ACTIONS.md](THIRD_PARTY_ACTIONS.md) | Third-party actions (ToolKit + backups) |
-| [TOOLKIT_SNAPSHOT.md](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit v63 metadata package and field coverage |
+| [TOOLKIT_SNAPSHOT.md](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit ID snapshots and field coverage |
 | `scripts/select_shortcut_icon_color.py` | Natural-language icon/color resolver |
+| `scripts/lookup_action_grounding.py` | Read-only lookup for reviewed Apple-derived macOS 27 Shortpy/WF mappings |
 | `scripts/validate_shortcut.py` | Preflight validator |
 | `scripts/test_wiring_regressions.py` | Deterministic validator regression suite |
 | `scripts/test_random_mixed_shortcuts.py` | Random mixed-action validator suite |
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
+| `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 
 ## Requirements

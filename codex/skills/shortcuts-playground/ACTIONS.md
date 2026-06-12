@@ -1,6 +1,6 @@
 # Shortcuts Actions Reference
 
-Complete catalog of all 365 WF*Action identifiers (macOS ToolKit v63 + bundled iOS HealthKit backups).
+Complete catalog of all 365 WF*Action identifiers from the original macOS ToolKit v63 snapshot plus bundled iOS HealthKit backups. macOS 27 ToolKit v78 adds additional identifiers to the packaged allowlist; only the v78 actions with inspected metadata are summarized here.
 
 > Note: In ToolKit SQLite `Tools`, four control-flow actions are not represented as normal tools:
 > `is.workflow.actions.conditional`, `is.workflow.actions.repeat.count`,
@@ -40,6 +40,33 @@ Some actions have non-standard mappings:
 
 ## Actions by Category
 
+### macOS 27 ToolKit v78 Additions
+
+These classic `is.workflow.actions.*` identifiers are present in the local macOS 27 Golden Gate ToolKit v78 database. They are allowlisted for validation. `Add Item to List` serialization is verified from Federico's macOS 27 sample; the remaining new actions still need dedicated authoring samples before relying on exact parameter structure.
+
+| Identifier | Description | Observed Parameter Keys |
+|------------|-------------|-------------------------|
+| `additemtolist` | Add Item to List | `WFListVariable`, `WFListItem`, `WFInsertPosition`, `WFItemIndex` |
+| `deletestoredcontent` | Delete Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `filter.vpns` | Find VPNs | `WFContentItemFilter`, `WFCompoundType`, `WFContentItemInputParameter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber` |
+| `getonscreencontext` | Get What's On Screen | `WFOnScreenContextScope`, `WFOnScreenContextResultType`, `WFOnScreenContextLimitEnabled`, `WFOnScreenContextLimit` |
+| `getselectedtext` | Get Selected Text | none |
+| `getstoredcontent` | Get Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `setstoredcontent` | Store Content | `WFInput`, `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `vpn.get` | Get Current VPN | none |
+
+#### Add Item to List
+
+`is.workflow.actions.additemtolist` appends to the end of a list by default when `WFInsertPosition` is omitted.
+
+| Behavior | Required Parameters |
+|----------|---------------------|
+| Add to end | `WFListVariable`, `WFListItem` |
+| Add to beginning | `WFListVariable`, `WFListItem`, `WFInsertPosition = "Beginning"` |
+| Add at index | `WFListVariable`, `WFListItem`, `WFInsertPosition = "Index"`, `WFItemIndex` |
+
+`WFListVariable` is a `WFTextTokenAttachment` pointing at a list output or named variable. `WFListItem` can be a literal value or `WFTextTokenString`.
+
 ### Text & Input
 
 | Identifier | Class | Description |
@@ -70,7 +97,7 @@ Some actions have non-standard mappings:
 |------------|-------|-------------|
 | `repeat.count` | WFRepeatAction | Repeat N times |
 | `repeat.each` | WFForEachRepeatAction | Repeat for each item |
-| `conditional` | WFConditionalAction | If/Otherwise |
+| `conditional` | WFConditionalAction | If/Otherwise/Otherwise If |
 | `choosefrommenu` | WFChooseFromMenuAction | Menu with cases |
 | `choosefromlist` | WFChooseFromListAction | Choose from list |
 | `exit` | WFExitAction | Exit shortcut |

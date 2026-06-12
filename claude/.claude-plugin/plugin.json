@@ -1,7 +1,7 @@
 {
   "name": "shortcuts-playground",
   "version": "1.1.0",
-  "description": "Build, validate, sign, and archive macOS/iOS Shortcuts directly from Claude Code. Ships a full Shortcuts knowledge base, a Craig Loop validator, a build agent, and a PostToolUse hook that auto-validates every .xml/.shortcut file as it is written.",
+  "description": "Build, validate, sign, and archive macOS/iOS Shortcuts directly from Claude Code. Ships a full Shortcuts knowledge base, target-gated macOS 27 Apple-derived grounding data, a Craig Loop validator, a build agent, and a PostToolUse hook that auto-validates every .xml/.shortcut file as it is written.",
   "author": {
     "name": "Federico Viticci",
     "url": "https://www.macstories.net"
@@ -29,6 +29,12 @@
       "type": "string",
       "title": "Default shortcuts sign mode",
       "description": "Default mode passed to `shortcuts sign`. Use `anyone` to distribute publicly or `people-who-know-me` to restrict to your contacts. Leave blank for `anyone`.",
+      "sensitive": false
+    },
+    "target_macos": {
+      "type": "string",
+      "title": "Target macOS for validation",
+      "description": "Target macOS major version for action availability. Leave blank or use `auto` to detect the host. Use `27` only when building Golden Gate-only shortcuts, or `latest` to include every packaged snapshot.",
       "sensitive": false
     }
   }

@@ -4,6 +4,16 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ## Unreleased
 
+### Added - macOS 27 Golden Gate validation support
+
+- Added macOS 27 ToolKit v78 ID snapshots to both Claude and Codex packages.
+- Updated validators to load packaged `toolkit-v*-tool-ids.json` snapshots by target macOS version instead of hard-coding v63. The default target is `auto`; `--target-macos 27` / `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` opt into Golden Gate-only IDs.
+- Added Claude `target_macos` user config so macOS 27 validation can be opted into explicitly on non-27 hosts.
+- Documented the v78-only classic actions discovered locally, including Add Item to List, Get Selected Text, Get What's On Screen, stored content actions, and VPN actions.
+- Documented and regression-tested the macOS 27 `Otherwise If` conditional shape and `Add Item to List` serialization from local samples.
+- Kept local compatibility-review notes outside the packaged plugin; only the portable metadata and validator behavior ship.
+- Added issue-regression coverage for target-gated v78 IDs.
+
 ## [1.1.0] — 2026-06-08 (public release)
 
 ### Fixed — issue regressions across Claude and Codex

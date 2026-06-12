@@ -2,6 +2,8 @@
 
 Complete catalog of all 1632 first-party AppIntent actions from macOS ToolKit v63 and backups.
 
+macOS 27 ToolKit v78 adds more AppIntent, Siri intent, and flow-tool identifiers to the packaged validator allowlist. Those v78 identifiers are validation coverage only unless their schemas are documented here, in another reference file, or in a golden/exported XML sample.
+
 ## AppIntents vs WF*Actions
 
 | Aspect | WF*Actions | AppIntents |

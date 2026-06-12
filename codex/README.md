@@ -51,6 +51,8 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 "$SKILL_DIR/scripts/sign_shortcut.sh" /path/to/Shortcut.xml --name "Shortcut Name"
 ```
 
-Set `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` to customize signing output.
+Set `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` to customize signing output. Set `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when intentionally building macOS 27 Golden Gate-only shortcuts; by default the validator detects the host macOS version.
+
+For macOS 27 schema grounding, the package includes `data/macos27-shortpy-grounding.json` and `scripts/lookup_action_grounding.py`. This is reviewed static metadata derived from Apple's local Shortcuts databases/framework surfaces; normal validation does not read live Shortcuts databases or call private frameworks.
 
 If `scripts/sign_shortcut.sh` fails with `Error: The file couldn't be opened because it isn't in the correct format.` while `validate_shortcut.py` and `plutil -lint` pass, retry signing outside Codex `workspace-write` sandbox restrictions or with Codex filesystem sandboxing set to full access. Apple's `shortcuts sign` can surface that misleading format error when the sandbox blocks what it needs.

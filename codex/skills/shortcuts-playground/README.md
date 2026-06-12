@@ -47,7 +47,7 @@ from the patch payload before running `scripts/validate_shortcut.py`.
 |------|-------------|
 | [`SKILL.md`](SKILL.md) | Skill definition with Codex workflow rules |
 | [`ACTIONS.md`](ACTIONS.md) | WF*Action identifiers and parameters |
-| [`APPINTENTS.md`](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups) |
+| [`APPINTENTS.md`](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups, with v78 IDs allowlisted separately) |
 | [`PARAMETER_TYPES.md`](PARAMETER_TYPES.md) | Parameter value types and serialization formats |
 | [`URL_SCHEMES.md`](URL_SCHEMES.md) | Apple-documented Shortcuts URL schemes and x-callback-url patterns |
 | [`JAVASCRIPT_WEBPAGE.md`](JAVASCRIPT_WEBPAGE.md) | Run JavaScript on Webpage runtime requirements |
@@ -60,12 +60,15 @@ from the patch payload before running `scripts/validate_shortcut.py`.
 | [`BEST_PRACTICES.md`](BEST_PRACTICES.md) | Mandatory build guidelines |
 | [`ICONS_AND_COLORS.md`](ICONS_AND_COLORS.md) | Icon glyph and color selection workflow |
 | [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md) | Third-party actions (ToolKit + backups) |
-| [`TOOLKIT_SNAPSHOT.md`](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit v63 metadata package and field coverage |
+| [`TOOLKIT_SNAPSHOT.md`](TOOLKIT_SNAPSHOT.md) | Bundled ToolKit ID snapshots and field coverage |
 | `scripts/select_shortcut_icon_color.py` | Natural-language icon/color resolver |
+| `scripts/lookup_action_grounding.py` | Read-only lookup for reviewed Apple-derived macOS 27 Shortpy/WF mappings |
 | `scripts/validate_shortcut.py` | Preflight validator |
 | `scripts/sign_shortcut.sh` | Codex archive-and-sign helper |
 | `scripts/test_wiring_regressions.py` | Deterministic validator regression suite |
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
+| `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 
 ## Requirements
