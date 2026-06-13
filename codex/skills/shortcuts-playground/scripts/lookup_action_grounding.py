@@ -27,6 +27,7 @@ TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
     "toolkit-v78": 27,
     "toolkit-v78-ios27": 27,
 }
+PARAMETER_CATALOG_MIN_MACOS_MAJOR = 27
 
 
 def toolkit_snapshot_min_macos_major(version: str | None) -> int | None:
@@ -322,7 +323,33 @@ def platform_availability_note(entry: dict[str, Any]) -> str | None:
     has_ios = any("ios" in platform.lower() for platform in platform_text)
     if has_ios and not has_macos:
         return "Only observed in iOS 27 Simulator ToolKit; no macOS ToolKit row observed."
+    if has_macos and not has_ios:
+        return "Only observed in macOS 27 ToolKit; no iOS 27 Simulator ToolKit row observed."
     return None
+
+
+def has_toolkit_parameter_summary(entry: dict[str, Any]) -> bool:
+    summary = entry.get("toolkitParameterSummary")
+    if not isinstance(summary, dict):
+        return False
+    return "parameterCount" in summary or bool(summary.get("parameters"))
+
+
+def parameter_metadata_note(
+    entry: dict[str, Any],
+    target_macos: int | None,
+    action_minimum_macos: int | None,
+) -> str | None:
+    if target_macos is None or target_macos >= PARAMETER_CATALOG_MIN_MACOS_MAJOR:
+        return None
+    if not has_toolkit_parameter_summary(entry):
+        return None
+    if action_minimum_macos is not None and action_minimum_macos > target_macos:
+        return None
+    return (
+        f"Parameter metadata is from OS {PARAMETER_CATALOG_MIN_MACOS_MAJOR} ToolKit; "
+        f"target macOS is {target_macos}."
+    )
 
 
 def entry_min_macos(identifier: str, availability: dict[str, int | None]) -> int | None:
@@ -341,6 +368,14 @@ def compact_entry(
         "status": entry.get("status"),
         "minimumMacOSMajor": minimum,
         "availabilityNote": target_note(minimum, target_macos),
+        "parameterMetadataMinimumMacOSMajor": (
+            PARAMETER_CATALOG_MIN_MACOS_MAJOR if has_toolkit_parameter_summary(entry) else None
+        ),
+        "parameterMetadataAvailabilityNote": parameter_metadata_note(
+            entry,
+            target_macos,
+            minimum,
+        ),
         "platformAvailabilityNote": platform_availability_note(entry),
         "name": entry.get("name"),
         "pythonName": entry.get("pythonName"),
@@ -374,6 +409,9 @@ def print_markdown_entry(
     note = target_note(minimum, target_macos)
     if note:
         print(f"- Availability: {note}")
+    parameter_note = parameter_metadata_note(entry, target_macos, minimum)
+    if parameter_note:
+        print(f"- Parameter metadata availability: {parameter_note}")
     platform_note = platform_availability_note(entry)
     if platform_note:
         print(f"- Platform availability: {platform_note}")
@@ -494,6 +532,11 @@ def main() -> int:
             for _, entry in results
         ]
         unique_platform_notes = sorted({note for note in platform_notes if note})
+        parameter_notes = [
+            parameter_metadata_note(entry, target_macos, entry_min_macos(identifier, availability))
+            for identifier, entry in results
+        ]
+        unique_parameter_notes = sorted({note for note in parameter_notes if note})
         payload = {
             "catalog": {
                 "schemaVersion": catalog.get("schemaVersion"),
@@ -503,6 +546,9 @@ def main() -> int:
             },
             "targetMacOSMajor": target_macos,
             "availabilityNote": unique_notes[0] if len(unique_notes) == 1 else None,
+            "parameterMetadataAvailabilityNote": (
+                unique_parameter_notes[0] if len(unique_parameter_notes) == 1 else None
+            ),
             "platformAvailabilityNote": (
                 unique_platform_notes[0] if len(unique_platform_notes) == 1 else None
             ),

@@ -647,6 +647,47 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertEqual(["iOS 27 Simulator"], entry["toolkitPlatforms"], rel_path)
             self.assertEqual("toolkit-parameter-summary", entry["status"], rel_path)
 
+    def test_lookup_action_grounding_marks_macos_only_and_v78_parameter_metadata(self) -> None:
+        platform_note = (
+            "Only observed in macOS 27 ToolKit; no iOS 27 Simulator ToolKit row observed."
+        )
+        parameter_note = "Parameter metadata is from OS 27 ToolKit; target macOS is 26."
+        for rel_path in self.LOOKUP_SCRIPTS:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / rel_path),
+                    "--identifier",
+                    "com.apple.Safari.CreateNewTabGroup",
+                    "--target-macos",
+                    "26",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            entry = payload["results"][0]
+            self.assertIsNone(payload["availabilityNote"], rel_path)
+            self.assertEqual(parameter_note, payload["parameterMetadataAvailabilityNote"], rel_path)
+            self.assertEqual(platform_note, payload["platformAvailabilityNote"], rel_path)
+            self.assertIsNone(entry["minimumMacOSMajor"], rel_path)
+            self.assertEqual(27, entry["parameterMetadataMinimumMacOSMajor"], rel_path)
+            self.assertEqual(parameter_note, entry["parameterMetadataAvailabilityNote"], rel_path)
+            self.assertEqual(platform_note, entry["platformAvailabilityNote"], rel_path)
+            self.assertEqual(["macOS 27"], entry["toolkitPlatforms"], rel_path)
+            contents = next(
+                parameter
+                for parameter in entry["toolkitParameterSummary"]["parameters"]
+                if parameter["key"] == "contents"
+            )
+            self.assertEqual(
+                {"URL", "com_apple_safari_tab_entity"},
+                set(contents["typePythonNames"]),
+                rel_path,
+            )
+
 
 class OS27AutomatorsReferenceTests(unittest.TestCase):
     def test_os27_action_parameter_updates_are_documented(self) -> None:
