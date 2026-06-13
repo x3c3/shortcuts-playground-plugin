@@ -75,12 +75,14 @@ These parameter additions were cross-checked against the Automators OS 26 to 27 
 | Identifier | New/Updated Parameters | Notes |
 |------------|------------------------|-------|
 | `is.workflow.actions.appendnote` | `section`, `ignoreWhitespace`, `interpretAsMarkdown` | `section` is the section title/heading; the booleans are `On`/`Off` UI toggles. |
+| `com.apple.mobilenotes.SharingExtension` | `interpretAsMarkdown` | Displayed as **Create Note**. This ToolKit row uses `contents` for the note body; `com.apple.Notes.CreateNoteIntent` did not expose the markdown toggle in local macOS 27 v78. |
 | `is.workflow.actions.askllm` | `WFAllowWebSearch` | Displayed as **Use Broad World Knowledge**. Boolean toggle for web-backed model knowledge. |
 | `is.workflow.actions.getdistance` | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Direct`. |
 | `is.workflow.actions.gettraveltime` | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Transit`. |
 | `is.workflow.actions.hide.app` | `WFAppsExcept` | Used when `WFHideAppMode = "All Apps"` to keep listed apps open. |
 | `is.workflow.actions.quit.app` | `WFAppsExcept` | Used when `WFQuitAppMode = "All Apps"` to keep listed apps open. |
 | `is.workflow.actions.scanbarcode` | `imageFile` | ToolKit-backed AppIntent parameter for scanning an input image file. |
+| `com.apple.Safari.CreateNewTabGroup` | `contents` | Displayed as **Create Tab Group**. Accepts URLs or existing Safari tab entities to seed the new tab group. |
 
 #### OS 26 to 27 Display Name Changes
 

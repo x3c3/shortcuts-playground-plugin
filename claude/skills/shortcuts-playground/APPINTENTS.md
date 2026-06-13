@@ -43,6 +43,8 @@ These entries document authoring metadata. They do not prove runtime availabilit
 |--------------|------------|--------|---------------------|
 | Share and Collaborate | `com.apple.sociallayerd.CollaborationIntent` | macOS 27 v78 | `recipients` |
 | Share | `com.apple.SharingUIService.ShareIntent` | iOS 27 Simulator v78 | `shareTransport`, `recipients`, `mode`, `content` |
+| Create Note | `com.apple.mobilenotes.SharingExtension` | macOS 27 v78 | `name`, `contents`, `folder`, `interpretAsMarkdown`, `OpenWhenRun` |
+| Create Tab Group | `com.apple.Safari.CreateNewTabGroup` | macOS 27 v78 | `contents`, `name`; `contents` accepts URLs or Safari tab entities |
 | Open Inbox | `com.apple.MobileSMS.ChangeFilterModeIntent` | macOS 27 v78 | `filterMode` |
 | Delete Conversations | `com.apple.MobileSMS.DeleteConversationIntent` | macOS 27 v78 | `entities` |
 | Delete Messages | `com.apple.MobileSMS.DeleteMessageIntent` | macOS 27 v78 | `entities`, `WFLinkMessagesEntityVariablePickerKey` |

@@ -557,6 +557,9 @@ class OS27AutomatorsReferenceTests(unittest.TestCase):
             "WFAvoidHighways",
             "WFAppsExcept",
             "interpretAsMarkdown",
+            "com.apple.mobilenotes.SharingExtension",
+            "com.apple.Safari.CreateNewTabGroup",
+            "Create Tab Group",
             "is.workflow.actions.getonscreencontext",
             "is.workflow.actions.getonscreencontent",
             "is.workflow.actions.extracttextfromimage",
@@ -572,6 +575,8 @@ class OS27AutomatorsReferenceTests(unittest.TestCase):
     def test_os27_appintent_updates_are_documented(self) -> None:
         required_appintent_terms = (
             "com.apple.sociallayerd.CollaborationIntent",
+            "com.apple.mobilenotes.SharingExtension",
+            "com.apple.Safari.CreateNewTabGroup",
             "com.apple.MobileSMS.ChangeFilterModeIntent",
             "com.apple.MobileSMS.SearchMessagesIntent",
             "com.apple.Photos.OpenAssetIntent",
