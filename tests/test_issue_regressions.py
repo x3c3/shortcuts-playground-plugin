@@ -481,6 +481,7 @@ class AppleGroundingCatalogTests(unittest.TestCase):
 
             self.assertEqual("toolkit-v78-first-party-parameter-keys", catalog["version"], rel_path)
             self.assertIn("Descriptions are intentionally omitted", catalog["scope"], rel_path)
+            self.assertIn("typePythonNames", catalog["scope"], rel_path)
             self.assertEqual(2585, len(catalog["tools"]), rel_path)
 
             send_message = catalog["tools"]["com.apple.MobileSMS.SendMessageIntent"]
@@ -489,9 +490,23 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertIn("macOS 27", send_message["platforms"], rel_path)
             self.assertIn("iOS 27 Simulator", send_message["platforms"], rel_path)
             self.assertEqual(8, send_message["parameterCount"], rel_path)
+            self.assertEqual(send_message["parameterCount"], len(send_message["parameters"]), rel_path)
             parameter_keys = {parameter["key"] for parameter in send_message["parameters"]}
             self.assertIn("content", parameter_keys, rel_path)
             self.assertIn("scheduledDate", parameter_keys, rel_path)
+            destination = next(
+                parameter
+                for parameter in send_message["parameters"]
+                if parameter["key"] == "destination"
+            )
+            self.assertEqual(
+                {
+                    "com_apple_mobile_sms_conversation_entity",
+                    "com_apple_mobile_sms_message_person",
+                },
+                set(destination["typePythonNames"]),
+                rel_path,
+            )
             self.assertTrue(
                 all("description" not in parameter for parameter in send_message["parameters"]),
                 rel_path,
@@ -604,6 +619,33 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertIn("destination", parameter_keys, rel_path)
             self.assertIn("content", parameter_keys, rel_path)
             self.assertIn("scheduledDate", parameter_keys, rel_path)
+
+    def test_lookup_action_grounding_marks_ios_only_parameter_catalog_entries(self) -> None:
+        expected_note = (
+            "Only observed in iOS 27 Simulator ToolKit; no macOS ToolKit row observed."
+        )
+        for rel_path in self.LOOKUP_SCRIPTS:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / rel_path),
+                    "--identifier",
+                    "com.apple.HearingApp.MuteVolumeIntent",
+                    "--target-macos",
+                    "27",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            entry = payload["results"][0]
+            self.assertIsNone(payload["availabilityNote"], rel_path)
+            self.assertEqual(expected_note, payload["platformAvailabilityNote"], rel_path)
+            self.assertEqual(expected_note, entry["platformAvailabilityNote"], rel_path)
+            self.assertEqual(["iOS 27 Simulator"], entry["toolkitPlatforms"], rel_path)
+            self.assertEqual("toolkit-parameter-summary", entry["status"], rel_path)
 
 
 class OS27AutomatorsReferenceTests(unittest.TestCase):

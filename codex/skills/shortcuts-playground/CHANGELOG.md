@@ -10,6 +10,7 @@ Expanded OS 27-era action support after reviewing the Automators forum thread an
 
 - Added `data/toolkit-v78-ios27-tool-ids.json` with 1,206 identifiers from the iOS 27.0 Simulator ToolKit database.
 - Added `data/toolkit-v78-first-party-parameter-keys.json`, a compact first-party ToolKit v78 parameter-key snapshot used by `lookup_action_grounding.py` as a broad AppIntent fallback.
+- Updated `lookup_action_grounding.py` to separate OS-version availability from platform provenance, so iOS-simulator-only ToolKit rows are flagged before macOS authoring.
 - Updated validator snapshot loading so iOS 27 ToolKit identifiers are target-gated and report iOS-specific availability reasons.
 - Documented the Automators action and parameter deltas in `ACTIONS.md` and `APPINTENTS.md`, including Messages, Photos, Reminders, Share/Collaborate, stored content, on-screen context, Notes markdown, Maps route options, and Hide/Quit Apps exclusion lists.
 - Filled the Create Note markdown and Safari Create Tab Group contents parameter mappings from local macOS 27 ToolKit evidence.

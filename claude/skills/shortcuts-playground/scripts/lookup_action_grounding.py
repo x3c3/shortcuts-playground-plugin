@@ -258,6 +258,7 @@ def entry_search_text(identifier: str, entry: dict[str, Any]) -> str:
                     [
                         parameter.get("key") or "",
                         parameter.get("typePythonName") or "",
+                        " ".join(toolkit_parameter_type_names(parameter)),
                     ]
                 )
     return "\n".join(parts).lower()
@@ -298,9 +299,29 @@ def search_parameter_entries(
     ][:limit]
 
 
+def toolkit_parameter_type_names(parameter: dict[str, Any]) -> list[str]:
+    type_names = parameter.get("typePythonNames")
+    if isinstance(type_names, list):
+        return [str(name) for name in type_names if name]
+    single = parameter.get("typePythonName")
+    return [str(single)] if single else []
+
+
 def target_note(minimum: int | None, target_macos: int | None) -> str | None:
     if target_macos is not None and minimum is not None and target_macos < minimum:
         return f"Requires macOS {minimum}+; target macOS is {target_macos}."
+    return None
+
+
+def platform_availability_note(entry: dict[str, Any]) -> str | None:
+    platforms = entry.get("toolkitPlatforms") or []
+    if not isinstance(platforms, list) or not platforms:
+        return None
+    platform_text = [str(platform) for platform in platforms]
+    has_macos = any("macos" in platform.lower() for platform in platform_text)
+    has_ios = any("ios" in platform.lower() for platform in platform_text)
+    if has_ios and not has_macos:
+        return "Only observed in iOS 27 Simulator ToolKit; no macOS ToolKit row observed."
     return None
 
 
@@ -320,6 +341,7 @@ def compact_entry(
         "status": entry.get("status"),
         "minimumMacOSMajor": minimum,
         "availabilityNote": target_note(minimum, target_macos),
+        "platformAvailabilityNote": platform_availability_note(entry),
         "name": entry.get("name"),
         "pythonName": entry.get("pythonName"),
         "toolRendererEmbedded": entry.get("toolRendererEmbedded"),
@@ -352,6 +374,9 @@ def print_markdown_entry(
     note = target_note(minimum, target_macos)
     if note:
         print(f"- Availability: {note}")
+    platform_note = platform_availability_note(entry)
+    if platform_note:
+        print(f"- Platform availability: {platform_note}")
     if entry.get("toolRendererEmbedded"):
         flag = "ToolRenderer embedded"
         if entry.get("toolRendererScriptingUtility"):
@@ -386,7 +411,7 @@ def print_markdown_entry(
             print(
                 "| `{}` | `{}` |".format(
                     parameter.get("key") or "",
-                    parameter.get("typePythonName") or "",
+                    "`, `".join(toolkit_parameter_type_names(parameter)),
                 )
             )
 
@@ -464,6 +489,11 @@ def main() -> int:
             for identifier, _ in results
         ]
         unique_notes = sorted({note for note in result_notes if note})
+        platform_notes = [
+            platform_availability_note(entry)
+            for _, entry in results
+        ]
+        unique_platform_notes = sorted({note for note in platform_notes if note})
         payload = {
             "catalog": {
                 "schemaVersion": catalog.get("schemaVersion"),
@@ -473,6 +503,9 @@ def main() -> int:
             },
             "targetMacOSMajor": target_macos,
             "availabilityNote": unique_notes[0] if len(unique_notes) == 1 else None,
+            "platformAvailabilityNote": (
+                unique_platform_notes[0] if len(unique_platform_notes) == 1 else None
+            ),
             "results": [
                 compact_entry(identifier, entry, availability, target_macos)
                 for identifier, entry in results
