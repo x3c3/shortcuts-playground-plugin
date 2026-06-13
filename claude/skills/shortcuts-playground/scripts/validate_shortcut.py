@@ -127,6 +127,9 @@ TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
     # ToolKit v78 was captured from macOS 27 Golden Gate. Keep this gated so
     # older macOS hosts do not accidentally validate shortcuts they cannot run.
     "toolkit-v78": 27,
+    # iOS Simulator v78 metadata is also OS 27-era. It remains target-gated so
+    # iOS-only identifiers do not validate for older target versions.
+    "toolkit-v78-ios27": 27,
 }
 TARGET_MACOS_ENV_VARS = (
     "SHORTCUTS_PLAYGROUND_TARGET_MACOS",
@@ -732,12 +735,20 @@ def _toolkit_snapshot_min_macos_major(payload: dict, path: Path) -> int:
     return 0
 
 
-def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, set[str]]]:
-    """Load bundled ToolKit snapshots as (version, minimum macOS, ids)."""
+def _toolkit_snapshot_platform_label(payload: dict, version: str) -> str:
+    platform_value = payload.get("platform")
+    platform_text = platform_value if isinstance(platform_value, str) else version
+    if "ios" in platform_text.lower():
+        return "iOS"
+    return "macOS"
+
+
+def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, str, set[str]]]:
+    """Load bundled ToolKit snapshots as (version, minimum OS, platform, ids)."""
 
     data_dir = skill_dir / "data"
     candidates = sorted(data_dir.glob("toolkit-v*-tool-ids.json"))
-    snapshots: list[tuple[str, int, set[str]]] = []
+    snapshots: list[tuple[str, int, str, set[str]]] = []
     for path in candidates:
         if not path.exists():
             continue
@@ -765,7 +776,14 @@ def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, se
             for item in exceptions:
                 if isinstance(item, str) and item:
                     ids_for_snapshot.add(item)
-        snapshots.append((version, _toolkit_snapshot_min_macos_major(payload, path), ids_for_snapshot))
+        snapshots.append(
+            (
+                version,
+                _toolkit_snapshot_min_macos_major(payload, path),
+                _toolkit_snapshot_platform_label(payload, version),
+                ids_for_snapshot,
+            )
+        )
     return snapshots
 
 
@@ -778,7 +796,7 @@ def load_packaged_toolkit_ids(skill_dir: Path, target_macos_major: int | None = 
     """
 
     allowed: set[str] = set()
-    for _, min_macos_major, ids in _load_packaged_toolkit_snapshots(skill_dir):
+    for _, min_macos_major, _, ids in _load_packaged_toolkit_snapshots(skill_dir):
         if target_macos_major is not None and min_macos_major > target_macos_major:
             continue
         allowed |= ids
@@ -794,14 +812,14 @@ def load_future_toolkit_id_reasons(skill_dir: Path, target_macos_major: int | No
         return {}
     snapshots = _load_packaged_toolkit_snapshots(skill_dir)
     included: set[str] = set()
-    for _, min_macos_major, ids in snapshots:
+    for _, min_macos_major, _, ids in snapshots:
         if min_macos_major <= target_macos_major:
             included |= ids
     future: dict[str, str] = {}
-    for version, min_macos_major, ids in snapshots:
+    for version, min_macos_major, platform_label, ids in snapshots:
         if min_macos_major <= target_macos_major:
             continue
-        reason = f"macOS {min_macos_major}+ ({version})"
+        reason = f"{platform_label} {min_macos_major}+ ({version})"
         for ident in ids - included:
             future[ident] = reason
     return future

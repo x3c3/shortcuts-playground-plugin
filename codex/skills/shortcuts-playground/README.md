@@ -68,6 +68,7 @@ from the patch payload before running `scripts/validate_shortcut.py`.
 | `scripts/test_wiring_regressions.py` | Deterministic validator regression suite |
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
 | `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/toolkit-v78-ios27-tool-ids.json` | Bundled iOS 27 Simulator ToolKit v78 action-ID allowlist, gated by validator target |
 | `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 

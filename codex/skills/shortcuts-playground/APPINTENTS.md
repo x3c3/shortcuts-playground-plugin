@@ -2,7 +2,7 @@
 
 Complete catalog of all 1632 first-party AppIntent actions from macOS ToolKit v63 and backups.
 
-macOS 27 ToolKit v78 adds more AppIntent, Siri intent, and flow-tool identifiers to the packaged validator allowlist. Those v78 identifiers are validation coverage only unless their schemas are documented here, in another reference file, or in a golden/exported XML sample.
+OS 27 ToolKit v78 snapshots add more AppIntent, Siri intent, and flow-tool identifiers to the packaged validator allowlist. Those v78 identifiers are validation coverage only unless their schemas are documented here, in another reference file, or in a golden/exported XML sample.
 
 ## AppIntents vs WF*Actions
 
@@ -32,6 +32,44 @@ Do **not** use these when targeting macOS:
 | `com.apple.shortcuts.OpenShortcutsStaticDeepLinks` | Open Shortcuts Settings | iOS-only — the Shortcuts app has no "Settings" pane on macOS. Use `com.apple.systempreferences.*` for Mac system-settings deep-links instead. |
 
 If you hit a runtime failure on macOS for an intent that validated cleanly, assume platform mismatch first. Add the failing identifier to the table above (with a short note) so the next build avoids it.
+
+## OS 26 to 27 ToolKit Updates
+
+The Automators OS 26 to 27 thread published a useful delta list on June 12-13, 2026. The identifiers below were cross-checked against local macOS 27 ToolKit v78 and, where noted, a hydrated iOS 27.0 Simulator ToolKit v78 database.
+
+These entries document authoring metadata. They do not prove runtime availability on every platform; use the macOS/iOS notes when choosing actions.
+
+| Display Name | Identifier | Source | Observed Parameters |
+|--------------|------------|--------|---------------------|
+| Share and Collaborate | `com.apple.sociallayerd.CollaborationIntent` | macOS 27 v78 | `recipients` |
+| Share | `com.apple.SharingUIService.ShareIntent` | iOS 27 Simulator v78 | `shareTransport`, `recipients`, `mode`, `content` |
+| Open Inbox | `com.apple.MobileSMS.ChangeFilterModeIntent` | macOS 27 v78 | `filterMode` |
+| Delete Conversations | `com.apple.MobileSMS.DeleteConversationIntent` | macOS 27 v78 | `entities` |
+| Delete Messages | `com.apple.MobileSMS.DeleteMessageIntent` | macOS 27 v78 | `entities`, `WFLinkMessagesEntityVariablePickerKey` |
+| Mark as Read | `com.apple.MobileSMS.MarkConversationAsUnreadIntent` | macOS 27 v78 | `operation`, `conversation`, `unreadState`, `OpenWhenRun` |
+| Search in Messages | `com.apple.MobileSMS.SearchMessagesIntent` | macOS 27 v78 | `criteria` |
+| Send Tapback | `com.apple.MobileSMS.SendMessageReactionIntent` | macOS 27 v78 | `message`, `reaction`, `WFLinkMessagesEntityVariablePickerKey` |
+| Find Message (Messages) | `com.apple.MobileSMS.MessageEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Find Album | `com.apple.Photos.AlbumEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Auto Enhance Photo | `com.apple.Photos.EnhanceIntent` | macOS 27 v78 | `assets`, `enabled` |
+| Favorite Photos | `com.apple.Photos.FavoriteAssetsIntent` | macOS 27 v78 | `assets`, `action` |
+| Open Photo | `com.apple.Photos.OpenAssetIntent` | macOS 27 v78 | `target` |
+| Hide Photos | `com.apple.Photos.HideAssetsIntent` | macOS 27 v78 | `assets`, `action` |
+| Delete Albums | `com.apple.Photos.DeleteAlbumsIntent` | macOS 27 v78 | `entities` |
+| Delete Albums | `com.apple.Photos.PhotosDeleteAlbumsAssistantIntent` | macOS 27 v78 | `entities` |
+| Find Message (Mail) | `com.apple.mail.MailMessageEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Create Group | `com.apple.reminders.CreateGroupAppIntent` | macOS 27 v78 | `name`, `lists` |
+| Create Section | `com.apple.reminders.CreateSectionAppIntent` | macOS 27 v78 | `list`, `name`, `OpenWhenRun` |
+| Edit List | `com.apple.reminders.ListEntity-UpdatableEntity` | macOS 27 v78 | `badge`, `color`, `entity`, `parent` |
+| Delete Lists | `com.apple.reminders.DeleteListsAppIntent` | macOS 27 v78 | `entities` |
+| Delete Groups | `com.apple.reminders.DeleteRemindersListGroupsAppIntent` | macOS 27 v78 | `entities`, `deleteSublists` |
+| Delete Sections | `com.apple.reminders.DeleteSectionsAppIntent` | macOS 27 v78 | `entities` |
+| Set Motion Cues | `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent` | macOS 27 v78 | `operation`, `state`, `ShowWhenRun` |
+| Get Vehicle Motion Cues | `com.apple.systempreferences.AxMotionCuesEnabledEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Update Vehicle Motion Cues | `com.apple.systempreferences.AxMotionCuesEnabledEntity-UpdatableEntity` | macOS 27 v78 | `entity`, `value` |
+| Mute Hearing Device Volume | `com.apple.HearingApp.MuteVolumeIntent` | iOS 27 Simulator v78 | none |
+
+The Automators thread reports **Toggle Vehicle Motion Cues**; the closest confirmed ToolKit match is `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent`, localized as **Set Motion Cues** in the local macOS 27 v78 database. It also reports **Set Switch Control Switch Set**; that exact action was not found in the local macOS 27 v78 database or the hydrated iOS 27 Simulator v78 database used here. Do not author Switch Control switch-set changes until an exported shortcut or a device ToolKit database confirms the identifier and parameter schema.
 
 ## How to Invoke AppIntents
 

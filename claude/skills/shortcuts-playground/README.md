@@ -57,6 +57,7 @@ If `shortcuts sign` reports that a validator-clean plist "isn't in the correct f
 | `scripts/test_random_mixed_shortcuts.py` | Random mixed-action validator suite |
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
 | `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/toolkit-v78-ios27-tool-ids.json` | Bundled iOS 27 Simulator ToolKit v78 action-ID allowlist, gated by validator target |
 | `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 

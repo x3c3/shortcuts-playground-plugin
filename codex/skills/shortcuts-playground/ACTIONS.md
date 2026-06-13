@@ -1,6 +1,6 @@
 # Shortcuts Actions Reference
 
-Complete catalog of all 365 WF*Action identifiers from the original macOS ToolKit v63 snapshot plus bundled iOS HealthKit backups. macOS 27 ToolKit v78 adds additional identifiers to the packaged allowlist; only the v78 actions with inspected metadata are summarized here.
+Complete catalog of all 365 WF*Action identifiers from the original macOS ToolKit v63 snapshot plus bundled iOS HealthKit backups. OS 27 ToolKit v78 snapshots add additional identifiers to the packaged allowlist; only the v78 actions with inspected metadata are summarized here.
 
 > Note: In ToolKit SQLite `Tools`, four control-flow actions are not represented as normal tools:
 > `is.workflow.actions.conditional`, `is.workflow.actions.repeat.count`,
@@ -40,20 +40,21 @@ Some actions have non-standard mappings:
 
 ## Actions by Category
 
-### macOS 27 ToolKit v78 Additions
+### OS 27 ToolKit v78 Additions
 
-These classic `is.workflow.actions.*` identifiers are present in the local macOS 27 Golden Gate ToolKit v78 database. They are allowlisted for validation. `Add Item to List` serialization is verified from Federico's macOS 27 sample; the remaining new actions still need dedicated authoring samples before relying on exact parameter structure.
+These classic/WF-namespace identifiers are present in local OS 27 ToolKit v78 databases. They are allowlisted for validation only when targeting OS 27+ or `latest`. `Add Item to List` serialization is verified from Federico's macOS 27 sample; the remaining new actions still need dedicated authoring samples before relying on exact parameter structure.
 
-| Identifier | Description | Observed Parameter Keys |
-|------------|-------------|-------------------------|
-| `additemtolist` | Add Item to List | `WFListVariable`, `WFListItem`, `WFInsertPosition`, `WFItemIndex` |
-| `deletestoredcontent` | Delete Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
-| `filter.vpns` | Find VPNs | `WFContentItemFilter`, `WFCompoundType`, `WFContentItemInputParameter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber` |
-| `getonscreencontext` | Get What's On Screen | `WFOnScreenContextScope`, `WFOnScreenContextResultType`, `WFOnScreenContextLimitEnabled`, `WFOnScreenContextLimit` |
-| `getselectedtext` | Get Selected Text | none |
-| `getstoredcontent` | Get Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
-| `setstoredcontent` | Store Content | `WFInput`, `WFStoredContentGlobalValue`, `WFStoredContentKey` |
-| `vpn.get` | Get Current VPN | none |
+| Identifier | Display Name | Observed Parameter Keys |
+|------------|--------------|-------------------------|
+| `is.workflow.actions.additemtolist` | Add Item to List | `WFListVariable`, `WFListItem`, `WFInsertPosition`, `WFItemIndex` |
+| `is.workflow.actions.deletestoredcontent` | Delete Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `is.workflow.actions.filter.vpns` | Find VPNs | `WFContentItemFilter`, `WFCompoundType`, `WFContentItemInputParameter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber` |
+| `is.workflow.actions.getonscreencontext` | Get What's On Screen | `WFOnScreenContextScope`, `WFOnScreenContextResultType`, `WFOnScreenContextLimitEnabled`, `WFOnScreenContextLimit` |
+| `is.workflow.actions.getonscreencontent` | Get What's On Screen | Deprecated in v78; use `is.workflow.actions.getonscreencontext` |
+| `is.workflow.actions.getselectedtext` | Get Selected Text | none |
+| `is.workflow.actions.getstoredcontent` | Get Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `is.workflow.actions.setstoredcontent` | Store Content | `WFInput`, `WFStoredContentGlobalValue`, `WFStoredContentKey` |
+| `is.workflow.actions.vpn.get` | Get Current VPN | none |
 
 #### Add Item to List
 
@@ -66,6 +67,27 @@ These classic `is.workflow.actions.*` identifiers are present in the local macOS
 | Add at index | `WFListVariable`, `WFListItem`, `WFInsertPosition = "Index"`, `WFItemIndex` |
 
 `WFListVariable` is a `WFTextTokenAttachment` pointing at a list output or named variable. `WFListItem` can be a literal value or `WFTextTokenString`.
+
+#### OS 26 to 27 Updated Parameters
+
+These parameter additions were cross-checked against the Automators OS 26 to 27 thread and local ToolKit v78 metadata. Treat AppIntent-style WF-namespace actions (`appendnote`, `scanbarcode`, `extracttextfromimage`) as ToolKit-backed AppIntents even though their identifiers begin with `is.workflow.actions.`.
+
+| Identifier | New/Updated Parameters | Notes |
+|------------|------------------------|-------|
+| `is.workflow.actions.appendnote` | `section`, `ignoreWhitespace`, `interpretAsMarkdown` | `section` is the section title/heading; the booleans are `On`/`Off` UI toggles. |
+| `is.workflow.actions.askllm` | `WFAllowWebSearch` | Displayed as **Use Broad World Knowledge**. Boolean toggle for web-backed model knowledge. |
+| `is.workflow.actions.getdistance` | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Direct`. |
+| `is.workflow.actions.gettraveltime` | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Transit`. |
+| `is.workflow.actions.hide.app` | `WFAppsExcept` | Used when `WFHideAppMode = "All Apps"` to keep listed apps open. |
+| `is.workflow.actions.quit.app` | `WFAppsExcept` | Used when `WFQuitAppMode = "All Apps"` to keep listed apps open. |
+| `is.workflow.actions.scanbarcode` | `imageFile` | ToolKit-backed AppIntent parameter for scanning an input image file. |
+
+#### OS 26 to 27 Display Name Changes
+
+| Identifier | Old Name | New Name |
+|------------|----------|----------|
+| `is.workflow.actions.extracttextfromimage` | Extract Text from Image | Extract from Image |
+| `com.apple.TVRemoteUIService.ToggleSystemAppearanceIntent` | Set Light/Dark Mode | Set Appearance on Apple TV |
 
 ### Text & Input
 

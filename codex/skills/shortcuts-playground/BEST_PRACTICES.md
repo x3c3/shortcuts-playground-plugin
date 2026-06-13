@@ -325,7 +325,7 @@ Send Message content -> WFTextTokenString placeholder for "Message Items"
 - Inside a **Repeat with Each**, do not **Set Variable** directly to a running total each pass. Use a temp variable for the current value, then **Math** (add/subtract) into a master total variable, and **Set Variable** to the master total.
 - To convert cents to dollars, divide by **100** first, then round to hundredths if needed (do not “round to hundredths” as a substitute for division).
 - If a **Math** action uses operand **100** on a cents value, the operator must be **÷** (not + or −).
-- Prefer **com.apple.Notes.CreateNoteFromMarkdownLinkAction** for markdown output and a plain Create Note AppIntent for rich/plain text. Avoid `com.apple.mobilenotes.SharingExtension` unless you’ve verified it exists on the target OS.
+- Prefer **com.apple.Notes.CreateNoteFromMarkdownLinkAction** for markdown output on older targets. On OS 27+, `com.apple.mobilenotes.SharingExtension` exposes `interpretAsMarkdown`; use it only when the target OS supports that parameter. Plain Create Note AppIntents remain fine for rich/plain text.
 
 ## Shortcut Building Techniques
 

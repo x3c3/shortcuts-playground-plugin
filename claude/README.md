@@ -14,7 +14,7 @@ Writing valid Shortcuts plists by hand — even with an LLM — is miserable. Th
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **Skill** | `skills/shortcuts-playground/` | The complete 12k-line Shortcuts knowledge base: action identifiers, wiring rules, 57 `BEST_PRACTICES.md` entries, golden example XMLs, ToolKit v63 and target-gated macOS 27 v78 ID snapshots, plus reviewed static Apple-derived macOS 27 grounding metadata. Claude loads it automatically when you ask for a shortcut. |
+| **Skill** | `skills/shortcuts-playground/` | The complete 12k-line Shortcuts knowledge base: action identifiers, wiring rules, 57 `BEST_PRACTICES.md` entries, golden example XMLs, ToolKit v63 and target-gated macOS/iOS 27 v78 ID snapshots, plus reviewed static Apple-derived macOS 27 grounding metadata. Claude loads it automatically when you ask for a shortcut. |
 | **Build agent** | `agents/shortcut-builder.md` | `shortcut-builder` — specialized agent that owns the full design → build → validate → sign → archive loop for new shortcuts. |
 | **Remix agent** | `agents/shortcut-remixer.md` | `shortcut-remixer` — specialized agent that applies a surgical natural-language diff to an existing unsigned XML shortcut. Preserves UUIDs, icon, metadata, and every action the user didn't ask to touch. |
 | **Hook** | `hooks/hooks.json` + `hooks/auto-validate.sh` | `PostToolUse` hook that runs the Craig Loop validator on every `Write`/`Edit` producing a Shortcuts plist — applies to BOTH agents. Exit code 2 + stderr feeds validator output back into Claude's context so the model can iterate. |
@@ -110,7 +110,7 @@ The plugin exposes three `userConfig` values in `plugin.json`:
 |-----|------|---------|---------|
 | `output_dir` | `directory` | `~/Documents/Shortcuts Playground` | Root directory where unsigned XML archives and signed `.shortcut` files are written. |
 | `signing_mode` | `string` | `anyone` | Passed to `shortcuts sign`. Use `anyone` for public distribution or `people-who-know-me` for contacts only. |
-| `target_macos` | `string` | `auto` | Validator action-availability target. Use `auto` for host detection, `27` for Golden Gate-only shortcuts, or `latest` to include every packaged snapshot. |
+| `target_macos` | `string` | `auto` | Validator action-availability target. Use `auto` for host detection, `27` for OS 27-era shortcuts that need v78 snapshots, or `latest` to include every packaged snapshot. |
 
 You can set these in three ways, from most to least explicit:
 

@@ -24,7 +24,21 @@ TARGET_MACOS_ENV_VARS = (
 )
 TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
     "toolkit-v78": 27,
+    "toolkit-v78-ios27": 27,
 }
+
+
+def toolkit_snapshot_min_macos_major(version: str | None) -> int | None:
+    if not isinstance(version, str) or not version:
+        return None
+    if version in TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR:
+        return TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR[version]
+    import re
+
+    match = re.search(r"v(\d+)", version)
+    if match and int(match.group(1)) >= 78:
+        return 27
+    return None
 
 
 def skill_dir() -> Path:
@@ -50,7 +64,7 @@ def load_identifier_min_macos(base: Path | None = None) -> dict[str, int | None]
         with path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
         version = payload.get("version") or path.stem.replace("-tool-ids", "")
-        min_macos = TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR.get(version)
+        min_macos = toolkit_snapshot_min_macos_major(version)
         ids = set(payload.get("ids") or [])
         ids.update(payload.get("control_flow_exceptions_missing_from_tools_table") or [])
         for identifier in ids:

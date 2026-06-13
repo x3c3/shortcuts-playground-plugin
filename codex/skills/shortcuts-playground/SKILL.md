@@ -256,7 +256,7 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 - **Regenerating from scratch** when only 1-2 specific actions need fixing. Targeted edits preserve working wiring.
 
 ### Data sources
-The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target macOS version, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default target is `auto` (`sw_vers` on macOS, latest snapshots outside macOS). Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building Golden Gate-only shortcuts. It does not read the user's live ToolKit SQLite database during normal validation.
+The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target macOS version, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default target is `auto` (`sw_vers` on macOS, latest snapshots outside macOS). Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building OS 27-era shortcuts that need the target-gated macOS/iOS v78 snapshots. It does not read the user's live ToolKit SQLite database during normal validation.
 
 For reviewed Apple-derived macOS 27 schema grounding, use the static catalog only:
 

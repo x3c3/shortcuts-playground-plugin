@@ -6,13 +6,14 @@ This skill bundles precomputed action-ID allowlists so it can be shared without 
 
 - `data/toolkit-v63-tool-ids.json` - flat list of 1,794 action/intent identifiers from the original ToolKit snapshot.
 - `data/toolkit-v78-tool-ids.json` - flat list of 2,731 action/intent identifiers from macOS 27 Golden Gate build 26A5353q.
+- `data/toolkit-v78-ios27-tool-ids.json` - flat list of 1,206 action/intent identifiers from an iOS 27.0 Simulator ToolKit v78 database.
 - `data/macos27-shortpy-grounding.json` - reviewed static Apple-derived macOS 27 grounding catalog with ToolKit `pythonName`, Apple Shortpy keyword, ToolRenderer utility, and ShortcutsLanguage syntax evidence.
 
 Only the identifiers needed for validation are bundled. This keeps the plugin lightweight compared with the full ToolKit SQLite metadata.
 
 ## Validator behavior
 
-`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target macOS version, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`).
+`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target macOS version, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`). OS 27 snapshots include both macOS 27 and iOS 27 Simulator ToolKit evidence.
 
 The default target is `auto`: on macOS it reads `sw_vers -productVersion`; outside macOS it falls back to the latest packaged snapshots. Override with `--target-macos 26`, `--target-macos 27`, or `--target-macos latest`. The same override is available via `SHORTCUTS_PLAYGROUND_TARGET_MACOS`.
 
@@ -21,6 +22,10 @@ This keeps validation portable and self-contained while avoiding false compatibi
 ## macOS 27 scope
 
 The v78 snapshot expands validation coverage for shortcuts created on macOS 27. It is only active when the target is macOS 27+ or `latest`. It is an identifier allowlist, not a complete authoring schema. If a v78-only action identifier is present but its parameter serialization is not documented in the reference files or a golden XML, do not guess the payload. Ask for an exported XML sample or use a documented fallback.
+
+## iOS 27 simulator scope
+
+The iOS 27 Simulator v78 snapshot adds iOS-only AppIntents that are not present in the macOS ToolKit database, such as `com.apple.HearingApp.MuteVolumeIntent` and iOS Settings/Wallet/Health/Fitness identifiers. These identifiers are included for iOS/iPadOS shortcut authoring and are also target-gated to OS 27+. Do not use them for macOS shortcuts unless a macOS ToolKit snapshot or exported shortcut confirms runtime support.
 
 ## Apple-derived grounding catalog
 

@@ -85,6 +85,7 @@ DATA_DIR="$PLUGIN_ROOT/skills/shortcuts-playground/data"
 DATA_FILES=(
   "toolkit-v63-tool-ids.json"
   "toolkit-v78-tool-ids.json"
+  "toolkit-v78-ios27-tool-ids.json"
   "macos27-shortpy-grounding.json"
   "shortcuts-official-glyph-mapping.json"
   "shortcuts-icon-colors.json"

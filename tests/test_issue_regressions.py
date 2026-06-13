@@ -128,6 +128,7 @@ class ToolkitSnapshotTests(unittest.TestCase):
             self.assertIn("is.workflow.actions.gettext", allowed_ids, rel_path)
             self.assertIn("is.workflow.actions.additemtolist", allowed_ids, rel_path)
             self.assertIn("is.workflow.actions.getselectedtext", allowed_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", allowed_ids, rel_path)
 
     def test_macos27_toolkit_ids_are_target_gated(self) -> None:
         for rel_path in (
@@ -149,6 +150,27 @@ class ToolkitSnapshotTests(unittest.TestCase):
                 future_26.get("is.workflow.actions.additemtolist"),
                 rel_path,
             )
+            self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", allowed_26, rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", allowed_27, rel_path)
+            self.assertEqual(
+                "iOS 27+ (toolkit-v78-ios27)",
+                future_26.get("com.apple.HearingApp.MuteVolumeIntent"),
+                rel_path,
+            )
+
+    def test_ios27_toolkit_snapshot_is_packaged(self) -> None:
+        for rel_path in (
+            "claude/skills/shortcuts-playground/data/toolkit-v78-ios27-tool-ids.json",
+            "codex/skills/shortcuts-playground/data/toolkit-v78-ios27-tool-ids.json",
+        ):
+            payload = load_json(REPO_ROOT / rel_path)
+            self.assertEqual("toolkit-v78-ios27", payload["version"], rel_path)
+            self.assertEqual("iOS Simulator", payload["platform"], rel_path)
+            self.assertEqual("iOS 27.0 Simulator", payload["source_runtime"], rel_path)
+            self.assertEqual(1206, len(payload["ids"]), rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", payload["ids"], rel_path)
+            self.assertIn("com.apple.SharingUIService.ShareIntent", payload["ids"], rel_path)
+            self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", load_json(REPO_ROOT / rel_path.replace("-ios27", ""))["ids"], rel_path)
 
     def test_macos27_otherwise_if_shape_validates(self) -> None:
         source_uuid = "12345678-1234-4234-9234-123456789ABC"
@@ -521,6 +543,48 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertEqual("is.workflow.actions.runshellscript", payload["results"][0]["identifier"], rel_path)
             self.assertIsNone(payload["results"][0]["minimumMacOSMajor"], rel_path)
             self.assertIsNone(payload["results"][0]["availabilityNote"], rel_path)
+
+
+class OS27AutomatorsReferenceTests(unittest.TestCase):
+    def test_os27_action_parameter_updates_are_documented(self) -> None:
+        required_action_terms = (
+            "WFAllowWebSearch",
+            "WFAvoidTolls",
+            "WFAvoidHighways",
+            "WFAppsExcept",
+            "interpretAsMarkdown",
+            "is.workflow.actions.getonscreencontext",
+            "is.workflow.actions.getonscreencontent",
+            "is.workflow.actions.extracttextfromimage",
+        )
+        for rel_path in (
+            "claude/skills/shortcuts-playground/ACTIONS.md",
+            "codex/skills/shortcuts-playground/ACTIONS.md",
+        ):
+            text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+            for term in required_action_terms:
+                self.assertIn(term, text, f"{rel_path}: {term}")
+
+    def test_os27_appintent_updates_are_documented(self) -> None:
+        required_appintent_terms = (
+            "com.apple.sociallayerd.CollaborationIntent",
+            "com.apple.MobileSMS.ChangeFilterModeIntent",
+            "com.apple.MobileSMS.SearchMessagesIntent",
+            "com.apple.Photos.OpenAssetIntent",
+            "com.apple.reminders.CreateSectionAppIntent",
+            "com.apple.HearingApp.MuteVolumeIntent",
+            "Set Switch Control Switch Set",
+            "Toggle Vehicle Motion Cues",
+            "com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent",
+            "com.apple.systempreferences.AxMotionCuesEnabledEntity-UpdatableEntity",
+        )
+        for rel_path in (
+            "claude/skills/shortcuts-playground/APPINTENTS.md",
+            "codex/skills/shortcuts-playground/APPINTENTS.md",
+        ):
+            text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+            for term in required_appintent_terms:
+                self.assertIn(term, text, f"{rel_path}: {term}")
 
 
 class SigningWrapperTests(unittest.TestCase):
