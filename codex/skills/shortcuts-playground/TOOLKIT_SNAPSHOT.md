@@ -15,9 +15,11 @@ Only the identifiers needed for validation are bundled. This keeps the plugin li
 
 ## Validator behavior
 
-`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target macOS version, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`). OS 27 snapshots include both macOS 27 and iOS 27 Simulator ToolKit evidence. It also target-gates the reviewed Automators OS 26 to 27 parameter deltas, so OS 27-only parameter keys are rejected on macOS 26 targets even when the action identifier itself predates OS 27.
+`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target OS version and target platform, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`). OS 27 snapshots include both macOS 27 and iOS 27 Simulator ToolKit evidence, but iOS-only snapshot rows are rejected for the default macOS platform target. It also target-gates the reviewed Automators OS 26 to 27 parameter deltas, so OS 27-only parameter keys are rejected on macOS 26 targets even when the action identifier itself predates OS 27.
 
-The default target is `auto`: on macOS it reads `sw_vers -productVersion`; outside macOS it falls back to the latest packaged snapshots. Override with `--target-macos 26`, `--target-macos 27`, or `--target-macos latest`. The same override is available via `SHORTCUTS_PLAYGROUND_TARGET_MACOS`.
+The default OS target is `auto`: on macOS it reads `sw_vers -productVersion`; when the host cannot be detected it falls back to macOS 26 rather than latest. Override with `--target-macos 26`, `--target-macos 27`, or `--target-macos latest`. The same override is available via `SHORTCUTS_PLAYGROUND_TARGET_MACOS`.
+
+The default platform target is `macos`. Override with `--target-platform ios` / `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM=ios` for iPhone/iPad authoring, or `--target-platform all` only when intentionally validating every packaged platform.
 
 This keeps validation portable and self-contained while avoiding false compatibility on machines that do not have macOS 27 installed.
 
@@ -29,7 +31,7 @@ OS 27-era parameter keys are also target-gated. Examples include `WFAllowWebSear
 
 ## iOS 27 simulator scope
 
-The iOS 27 Simulator v78 snapshot adds iOS-only AppIntents that are not present in the macOS ToolKit database, such as `com.apple.HearingApp.MuteVolumeIntent` and iOS Settings/Wallet/Health/Fitness identifiers. These identifiers are included for iOS/iPadOS shortcut authoring and are also target-gated to OS 27+. Do not use them for macOS shortcuts unless a macOS ToolKit snapshot or exported shortcut confirms runtime support.
+The iOS 27 Simulator v78 snapshot adds iOS-only AppIntents that are not present in the macOS ToolKit database, such as `com.apple.HearingApp.MuteVolumeIntent` and iOS Settings/Wallet/Health/Fitness identifiers. These identifiers are included for iOS/iPadOS shortcut authoring and are also target-gated to OS 27+. They do not validate for the default macOS target; use `--target-platform ios` only when authoring for iPhone/iPad. Do not use them for macOS shortcuts unless a macOS ToolKit snapshot or exported shortcut confirms runtime support.
 
 ## Apple-derived grounding catalog
 

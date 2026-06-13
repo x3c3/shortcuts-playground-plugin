@@ -123,14 +123,23 @@ class ToolkitSnapshotTests(unittest.TestCase):
             module, module_path = self.load_validator_module(rel_path)
 
             skill_dir = module_path.parents[1]
-            allowed_ids = module.load_packaged_toolkit_ids(skill_dir, target_macos_major=27)
+            macos_ids = module.load_packaged_toolkit_ids(skill_dir, target_macos_major=27)
+            all_platform_ids = module.load_packaged_toolkit_ids(
+                skill_dir,
+                target_macos_major=27,
+                target_platform=None,
+            )
 
-            self.assertIn("is.workflow.actions.gettext", allowed_ids, rel_path)
-            self.assertIn("is.workflow.actions.additemtolist", allowed_ids, rel_path)
-            self.assertIn("is.workflow.actions.getselectedtext", allowed_ids, rel_path)
-            self.assertIn("com.apple.HearingApp.AdjustVolumeIntent", allowed_ids, rel_path)
-            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", allowed_ids, rel_path)
-            self.assertIn("com.apple.HearingApp.SelectPresetIntent", allowed_ids, rel_path)
+            self.assertIn("is.workflow.actions.gettext", macos_ids, rel_path)
+            self.assertIn("is.workflow.actions.additemtolist", macos_ids, rel_path)
+            self.assertIn("is.workflow.actions.getselectedtext", macos_ids, rel_path)
+            self.assertNotIn("com.apple.HearingApp.AdjustVolumeIntent", macos_ids, rel_path)
+            self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", macos_ids, rel_path)
+            self.assertNotIn("com.apple.HearingApp.SelectPresetIntent", macos_ids, rel_path)
+
+            self.assertIn("com.apple.HearingApp.AdjustVolumeIntent", all_platform_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", all_platform_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.SelectPresetIntent", all_platform_ids, rel_path)
 
     def test_macos27_toolkit_ids_are_target_gated(self) -> None:
         for rel_path in (
@@ -153,12 +162,58 @@ class ToolkitSnapshotTests(unittest.TestCase):
                 rel_path,
             )
             self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", allowed_26, rel_path)
-            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", allowed_27, rel_path)
+            self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", allowed_27, rel_path)
             self.assertEqual(
                 "iOS 27+ (toolkit-v78-ios27)",
                 future_26.get("com.apple.HearingApp.MuteVolumeIntent"),
                 rel_path,
             )
+            self.assertEqual(
+                "iOS-only (toolkit-v78-ios27); target platform is macOS",
+                module.load_future_toolkit_id_reasons(skill_dir, 27).get(
+                    "com.apple.HearingApp.MuteVolumeIntent"
+                ),
+                rel_path,
+            )
+
+    def test_ios27_toolkit_ids_require_ios_or_all_target_platform(self) -> None:
+        for rel_path in (
+            "claude/skills/shortcuts-playground/scripts/validate_shortcut.py",
+            "codex/skills/shortcuts-playground/scripts/validate_shortcut.py",
+        ):
+            module, module_path = self.load_validator_module(rel_path)
+            skill_dir = module_path.parents[1]
+
+            macos_ids = module.load_allowed_ids(skill_dir, target_macos_major=27)
+            ios_ids = module.load_allowed_ids(
+                skill_dir,
+                target_macos_major=27,
+                target_platform="ios",
+            )
+            all_ids = module.load_allowed_ids(
+                skill_dir,
+                target_macos_major=27,
+                target_platform=None,
+            )
+
+            self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", macos_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", ios_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.MuteVolumeIntent", all_ids, rel_path)
+
+    def test_auto_target_macos_falls_back_to_26_when_host_unknown(self) -> None:
+        for rel_path in (
+            "claude/skills/shortcuts-playground/scripts/validate_shortcut.py",
+            "codex/skills/shortcuts-playground/scripts/validate_shortcut.py",
+        ):
+            module, _ = self.load_validator_module(rel_path)
+            original = module.detect_host_macos_major
+            try:
+                module.detect_host_macos_major = lambda: None
+                self.assertEqual(26, module.resolve_target_macos_major("auto"), rel_path)
+                self.assertEqual(26, module.resolve_target_macos_major(None), rel_path)
+                self.assertIsNone(module.resolve_target_macos_major("latest"), rel_path)
+            finally:
+                module.detect_host_macos_major = original
 
     def test_os27_parameter_keys_are_target_gated(self) -> None:
         expected = {

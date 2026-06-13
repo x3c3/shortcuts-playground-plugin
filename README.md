@@ -175,14 +175,15 @@ To change the output directory, edit `~/.claude/settings.json`:
     "shortcuts-playground@shortcuts-playground": {
       "options": {
         "output_dir": "/Users/you/Documents/Shortcuts Playground",
-        "target_macos": "auto"
+        "target_macos": "auto",
+        "target_platform": "macos"
       }
     }
   }
 }
 ```
 
-The plugin also supports `signing_mode` (`anyone` for public distribution, `people-who-know-me` for contacts only) and `target_macos` (`auto`, `26`, `27`, or `latest`). Default validation target is `auto`, which detects the host macOS version. Use `target_macos = "27"` only when intentionally building OS 27-era shortcuts that need the target-gated macOS/iOS v78 snapshots.
+The plugin also supports `signing_mode` (`anyone` for public distribution, `people-who-know-me` for contacts only), `target_macos` (`auto`, `26`, `27`, or `latest`), and `target_platform` (`macos`, `ios`, or `all`). Default validation detects the host macOS version, falls back to macOS 26 if the host cannot be detected, and targets `macos`. Use `target_macos = "27"` only when intentionally building Golden Gate-era shortcuts, and `target_platform = "ios"` only when authoring iPhone/iPad-only actions.
 
 ---
 

@@ -34,7 +34,13 @@
     "target_macos": {
       "type": "string",
       "title": "Target macOS for validation",
-      "description": "Target macOS major version for action availability. Leave blank or use `auto` to detect the host. Use `27` only when building Golden Gate-only shortcuts, or `latest` to include every packaged snapshot.",
+      "description": "Target macOS major version for action availability. Leave blank or use `auto` to detect the host. Use `27` only when building Golden Gate-only shortcuts, or `latest` to include every packaged OS snapshot.",
+      "sensitive": false
+    },
+    "target_platform": {
+      "type": "string",
+      "title": "Target platform for validation",
+      "description": "Target platform for action availability. Use `macos` for Mac shortcuts, `ios` for iPhone/iPad shortcuts, or `all` only when intentionally validating every packaged platform.",
       "sensitive": false
     }
   }

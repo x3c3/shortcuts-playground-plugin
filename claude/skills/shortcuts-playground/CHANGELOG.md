@@ -1,5 +1,19 @@
 # Autoresearch Loop Changelog
 
+## Date: June 13, 2026 - Platform-aware OS 27 validation
+
+### Summary
+
+Tightened the early OS 27 validator support so macOS users do not accidentally validate iOS-only AppIntents from the iOS 27 Simulator snapshot.
+
+### Fixes Applied
+
+- Added target-platform filtering to `validate_shortcut.py`: default validation targets `macos`, while `--target-platform ios` / `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM=ios` opt into iPhone/iPad rows and `--target-platform all` is reserved for metadata audits.
+- Changed `auto` OS targeting to fall back to macOS 26 when the host macOS version cannot be detected, instead of silently enabling every packaged snapshot.
+- Kept `--target-macos latest` as the explicit escape hatch for validating every packaged OS snapshot.
+- Added issue-regression coverage proving iOS-only Hearing AppIntents are rejected for Mac-targeted shortcuts but allowed when the platform target is `ios` or `all`.
+- Updated plugin docs and Claude user config to document `target_platform`.
+
 ## Date: June 13, 2026 - OS 27 trigger metadata audit
 
 ### Summary

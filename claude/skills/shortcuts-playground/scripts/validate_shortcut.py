@@ -135,6 +135,10 @@ TARGET_MACOS_ENV_VARS = (
     "SHORTCUTS_PLAYGROUND_TARGET_MACOS",
     "CLAUDE_PLUGIN_OPTION_TARGET_MACOS",
 )
+TARGET_PLATFORM_ENV_VARS = (
+    "SHORTCUTS_PLAYGROUND_TARGET_PLATFORM",
+    "CLAUDE_PLUGIN_OPTION_TARGET_PLATFORM",
+)
 OS27_PARAMETER_KEYS_BY_ACTION = {
     # Cross-checked against the Automators OS 26 -> 27 action delta and local
     # ToolKit v78 metadata. These action identifiers may exist on older OSes,
@@ -719,8 +723,8 @@ def resolve_target_macos_major(raw: str | None = None) -> int | None:
     """Resolve CLI/env target macOS.
 
     Returns None for "latest"/"all" because that intentionally includes every
-    packaged snapshot. "auto" uses the host macOS version and falls back to
-    latest when the host is not macOS.
+    packaged snapshot. "auto" uses the host macOS version and falls back to the
+    conservative macOS 26 target when the host version cannot be detected.
     """
 
     value = raw
@@ -734,7 +738,8 @@ def resolve_target_macos_major(raw: str | None = None) -> int | None:
         value = "auto"
     normalized = value.strip().lower()
     if normalized in {"", "auto", "host"}:
-        return detect_host_macos_major()
+        detected = detect_host_macos_major()
+        return detected if detected is not None else 26
     if normalized in {"latest", "all", "any"}:
         return None
     if normalized.startswith("macos"):
@@ -743,6 +748,34 @@ def resolve_target_macos_major(raw: str | None = None) -> int | None:
         return int(normalized.split(".", 1)[0])
     except ValueError:
         return None
+
+
+def resolve_target_platform(raw: str | None = None) -> str | None:
+    """Resolve target platform.
+
+    Returns "macos" or "ios" for platform-specific validation, and None for
+    "all"/"any" when the caller intentionally wants every packaged platform.
+    The default is macOS because this plugin signs on macOS and most generated
+    shortcuts are Mac-imported unless the user explicitly targets iOS/iPadOS.
+    """
+
+    value = raw
+    if value is None:
+        for env_name in TARGET_PLATFORM_ENV_VARS:
+            env_value = os.environ.get(env_name)
+            if env_value:
+                value = env_value
+                break
+    if value is None:
+        value = "macos"
+    normalized = value.strip().lower().replace("_", "-")
+    if normalized in {"", "auto", "host", "mac", "macos", "mac-os"}:
+        return "macos"
+    if normalized in {"ios", "ipados", "iphone", "ipad"}:
+        return "ios"
+    if normalized in {"latest", "all", "any"}:
+        return None
+    return "macos"
 
 
 def _toolkit_snapshot_min_macos_major(payload: dict, path: Path) -> int:
@@ -762,6 +795,22 @@ def _toolkit_snapshot_platform_label(payload: dict, version: str) -> str:
     if "ios" in platform_text.lower():
         return "iOS"
     return "macOS"
+
+
+def _target_platform_label(target_platform: str | None) -> str:
+    if target_platform == "ios":
+        return "iOS/iPadOS"
+    if target_platform == "macos":
+        return "macOS"
+    return "all platforms"
+
+
+def _snapshot_matches_target_platform(platform_label: str, target_platform: str | None) -> bool:
+    if target_platform is None:
+        return True
+    if platform_label == "iOS":
+        return target_platform == "ios"
+    return target_platform == "macos"
 
 
 def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, str, set[str]]]:
@@ -808,7 +857,11 @@ def _load_packaged_toolkit_snapshots(skill_dir: Path) -> list[tuple[str, int, st
     return snapshots
 
 
-def load_packaged_toolkit_ids(skill_dir: Path, target_macos_major: int | None = None) -> set[str]:
+def load_packaged_toolkit_ids(
+    skill_dir: Path,
+    target_macos_major: int | None = None,
+    target_platform: str | None = "macos",
+) -> set[str]:
     """Load bundled ToolKit ID snapshots for the requested target macOS.
 
     Each snapshot is a portable allowlist extracted from Apple's ToolKit SQLite
@@ -817,8 +870,10 @@ def load_packaged_toolkit_ids(skill_dir: Path, target_macos_major: int | None = 
     """
 
     allowed: set[str] = set()
-    for _, min_macos_major, _, ids in _load_packaged_toolkit_snapshots(skill_dir):
+    for _, min_macos_major, platform_label, ids in _load_packaged_toolkit_snapshots(skill_dir):
         if target_macos_major is not None and min_macos_major > target_macos_major:
+            continue
+        if not _snapshot_matches_target_platform(platform_label, target_platform):
             continue
         allowed |= ids
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
@@ -826,21 +881,34 @@ def load_packaged_toolkit_ids(skill_dir: Path, target_macos_major: int | None = 
     return allowed
 
 
-def load_future_toolkit_id_reasons(skill_dir: Path, target_macos_major: int | None) -> dict[str, str]:
-    """Return IDs excluded by the target macOS, with a human-readable reason."""
+def load_future_toolkit_id_reasons(
+    skill_dir: Path,
+    target_macos_major: int | None,
+    target_platform: str | None = "macos",
+) -> dict[str, str]:
+    """Return IDs excluded by target OS/platform, with a human-readable reason."""
 
-    if target_macos_major is None:
+    if target_macos_major is None and target_platform is None:
         return {}
     snapshots = _load_packaged_toolkit_snapshots(skill_dir)
     included: set[str] = set()
-    for _, min_macos_major, _, ids in snapshots:
-        if min_macos_major <= target_macos_major:
-            included |= ids
+    for _, min_macos_major, platform_label, ids in snapshots:
+        if target_macos_major is not None and min_macos_major > target_macos_major:
+            continue
+        if not _snapshot_matches_target_platform(platform_label, target_platform):
+            continue
+        included |= ids
     future: dict[str, str] = {}
     for version, min_macos_major, platform_label, ids in snapshots:
-        if min_macos_major <= target_macos_major:
+        if target_macos_major is not None and min_macos_major > target_macos_major:
+            reason = f"{platform_label} {min_macos_major}+ ({version})"
+        elif not _snapshot_matches_target_platform(platform_label, target_platform):
+            reason = (
+                f"{platform_label}-only ({version}); "
+                f"target platform is {_target_platform_label(target_platform)}"
+            )
+        else:
             continue
-        reason = f"{platform_label} {min_macos_major}+ ({version})"
         for ident in ids - included:
             future[ident] = reason
     return future
@@ -857,9 +925,13 @@ def load_future_parameter_key_reasons(target_macos_major: int | None) -> dict[st
     }
 
 
-def load_allowed_ids(skill_dir: Path, target_macos_major: int | None = None) -> set[str]:
+def load_allowed_ids(
+    skill_dir: Path,
+    target_macos_major: int | None = None,
+    target_platform: str | None = "macos",
+) -> set[str]:
     allowed = set()
-    allowed |= load_packaged_toolkit_ids(skill_dir, target_macos_major)
+    allowed |= load_packaged_toolkit_ids(skill_dir, target_macos_major, target_platform)
 
     # Keep markdown references as additive fallback, especially for backup-only third-party IDs.
     actions_md = skill_dir / "ACTIONS.md"
@@ -875,7 +947,7 @@ def load_allowed_ids(skill_dir: Path, target_macos_major: int | None = None) -> 
 
     allowed |= CONTROL_FLOW_TOOLKIT_EXCEPTIONS
     allowed |= HEALTH_IOS_ONLY_ACTIONS
-    future_ids = load_future_toolkit_id_reasons(skill_dir, target_macos_major)
+    future_ids = load_future_toolkit_id_reasons(skill_dir, target_macos_major, target_platform)
     allowed -= set(future_ids)
     return allowed
 
@@ -2053,7 +2125,8 @@ def validate(
                     if unavailable_reason:
                         errors.append(
                             f"Action identifier requires {unavailable_reason} at index {idx}: {ident}. "
-                            "Set --target-macos 27 or SHORTCUTS_PLAYGROUND_TARGET_MACOS=27 only when building for Golden Gate."
+                            "Set --target-macos 27 only for Golden Gate-only IDs, or "
+                            "--target-platform ios/all only when intentionally targeting iOS/iPadOS metadata."
                         )
                     else:
                         hint = ACTION_ALIAS_HINTS.get(ident)
@@ -2069,7 +2142,8 @@ def validate(
                     if unavailable_reason:
                         errors.append(
                             f"AppIntent identifier requires {unavailable_reason} at index {idx}: {ident}. "
-                            "Set --target-macos 27 or SHORTCUTS_PLAYGROUND_TARGET_MACOS=27 only when building for Golden Gate."
+                            "Set --target-macos 27 only for Golden Gate-only IDs, or "
+                            "--target-platform ios/all only when intentionally targeting iOS/iPadOS metadata."
                         )
                     else:
                         errors.append(f"Unknown AppIntent identifier at index {idx}: {ident}")
@@ -3434,6 +3508,14 @@ def main() -> int:
             "Use 26, 27, auto (default), or latest/all to include every packaged snapshot."
         ),
     )
+    parser.add_argument(
+        "--target-platform",
+        default=None,
+        help=(
+            "Target platform for bundled ToolKit availability. "
+            "Use macos (default), ios/ipados, or all to include every packaged platform."
+        ),
+    )
     args = parser.parse_args()
 
     shortcut_path = Path(args.shortcut).expanduser().resolve()
@@ -3443,8 +3525,13 @@ def main() -> int:
 
     skill_dir = Path(__file__).resolve().parents[1]
     target_macos_major = resolve_target_macos_major(args.target_macos)
-    allowed_ids = load_allowed_ids(skill_dir, target_macos_major)
-    unavailable_ids = load_future_toolkit_id_reasons(skill_dir, target_macos_major)
+    target_platform = resolve_target_platform(args.target_platform)
+    allowed_ids = load_allowed_ids(skill_dir, target_macos_major, target_platform)
+    unavailable_ids = load_future_toolkit_id_reasons(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
     unavailable_parameter_keys = load_future_parameter_key_reasons(target_macos_major)
     allowed_glyph_ids, allowed_icon_colors = load_icon_metadata(skill_dir)
 

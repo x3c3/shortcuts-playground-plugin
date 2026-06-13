@@ -104,13 +104,14 @@ For CI environments without the macOS `shortcuts` CLI, set `SHORTCUTS_PLAYGROUND
 
 ## Configuration
 
-The plugin exposes three `userConfig` values in `plugin.json`:
+The plugin exposes four `userConfig` values in `plugin.json`:
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
 | `output_dir` | `directory` | `~/Documents/Shortcuts Playground` | Root directory where unsigned XML archives and signed `.shortcut` files are written. |
 | `signing_mode` | `string` | `anyone` | Passed to `shortcuts sign`. Use `anyone` for public distribution or `people-who-know-me` for contacts only. |
-| `target_macos` | `string` | `auto` | Validator action-availability target. Use `auto` for host detection, `27` for OS 27-era shortcuts that need v78 snapshots, or `latest` to include every packaged snapshot. |
+| `target_macos` | `string` | `auto` | Validator OS availability target. Use `auto` for host detection, `27` for OS 27-era shortcuts that need v78 snapshots, or `latest` to include every packaged OS snapshot. If the host cannot be detected, `auto` falls back to macOS 26. |
+| `target_platform` | `string` | `macos` | Validator platform availability target. Use `macos` for Mac shortcuts, `ios` for iPhone/iPad-only authoring, or `all` only for cross-platform metadata audits. |
 
 You can set these in three ways, from most to least explicit:
 
@@ -121,15 +122,16 @@ You can set these in three ways, from most to least explicit:
      "pluginConfigs": {
        "shortcuts-playground@shortcuts-playground": {
          "options": {
-          "output_dir": "/Users/you/Documents/Shortcuts Playground",
-          "signing_mode": "anyone",
-          "target_macos": "auto"
+           "output_dir": "/Users/you/Documents/Shortcuts Playground",
+           "signing_mode": "anyone",
+           "target_macos": "auto",
+           "target_platform": "macos"
          }
        }
      }
    }
    ```
-   Claude Code substitutes non-sensitive values into plugin skill/agent content as `${user_config.<key>}` and exports each value as `CLAUDE_PLUGIN_OPTION_<KEY_UPPERCASED>` (e.g. `CLAUDE_PLUGIN_OPTION_OUTPUT_DIR`) for plugin subprocesses. The bundled agents resolve `${user_config.output_dir}` first and pass the resulting path to `sign-shortcut --output-dir`, so this setting controls both draft and signed output paths. `target_macos` is read by the validator as `CLAUDE_PLUGIN_OPTION_TARGET_MACOS`.
+   Claude Code substitutes non-sensitive values into plugin skill/agent content as `${user_config.<key>}` and exports each value as `CLAUDE_PLUGIN_OPTION_<KEY_UPPERCASED>` (e.g. `CLAUDE_PLUGIN_OPTION_OUTPUT_DIR`) for plugin subprocesses. The bundled agents resolve `${user_config.output_dir}` first and pass the resulting path to `sign-shortcut --output-dir`, so this setting controls both draft and signed output paths. `target_macos` and `target_platform` are read by the validator as `CLAUDE_PLUGIN_OPTION_TARGET_MACOS` and `CLAUDE_PLUGIN_OPTION_TARGET_PLATFORM`.
 3. **Environment variable override.** If both above fail, you can always set the env var directly for a one-off build:
    ```bash
    CLAUDE_PLUGIN_OPTION_OUTPUT_DIR=/custom/dir sign-shortcut draft.xml --name "My Shortcut"

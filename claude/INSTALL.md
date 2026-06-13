@@ -90,14 +90,15 @@ The plugin creates this directory on first use. If you want your shortcuts somew
     "shortcuts-playground@shortcuts-playground": {
       "options": {
         "output_dir": "/Users/you/iCloud Drive/Shortcuts Playground",
-        "target_macos": "auto"
+        "target_macos": "auto",
+        "target_platform": "macos"
       }
     }
   }
 }
 ```
 
-`target_macos` controls action availability during validation. Leave it as `auto` for host detection. Set it to `"27"` only when intentionally building OS 27-era shortcuts that need the target-gated macOS/iOS v78 snapshots, or `"latest"` when you want every packaged snapshot regardless of host OS.
+`target_macos` controls OS availability during validation. Leave it as `auto` for host detection; if the host cannot be detected, the validator falls back to macOS 26. Set it to `"27"` only when intentionally building OS 27-era shortcuts that need the target-gated v78 snapshots, or `"latest"` when you want every packaged OS snapshot regardless of host OS. `target_platform` defaults to `"macos"`; set it to `"ios"` only when authoring iPhone/iPad-only actions from the iOS 27 Simulator snapshot, or `"all"` for metadata audits.
 
 Or set it per-invocation via an environment variable:
 

@@ -4,6 +4,13 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ## Unreleased
 
+### Fixed - Platform-aware OS 27 validation
+
+- Added target-platform filtering to the validator so iOS 27 Simulator-only AppIntents no longer validate for the default macOS target.
+- Added Claude `target_platform` user config plus `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM` / `CLAUDE_PLUGIN_OPTION_TARGET_PLATFORM` support for explicit `ios` or `all` validation.
+- Changed `auto` OS targeting to fall back to macOS 26 when host detection is unavailable, keeping OS 27 support opt-in on non-macOS validation hosts.
+- Added issue-regression coverage for iOS-only AppIntent gating and the conservative `auto` fallback.
+
 ### Added - OS 27 automation trigger metadata
 
 - Added a compact ToolKit v78 automation trigger catalog covering 42 triggers from local macOS 27 and iOS 27 Simulator databases.

@@ -51,7 +51,7 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 "$SKILL_DIR/scripts/sign_shortcut.sh" /path/to/Shortcut.xml --name "Shortcut Name"
 ```
 
-Set `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` to customize signing output. Set `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when intentionally building OS 27-era shortcuts that need the target-gated macOS/iOS v78 snapshots; by default the validator detects the host macOS version.
+Set `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` to customize signing output. Set `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when intentionally building OS 27-era shortcuts that need the target-gated macOS v78 snapshot; by default the validator detects the host macOS version and falls back to macOS 26 when the host cannot be detected. Set `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM=ios` only when intentionally authoring iPhone/iPad-only actions from the iOS 27 Simulator snapshot.
 
 For macOS 27 schema grounding, the package includes `data/macos27-shortpy-grounding.json` and `scripts/lookup_action_grounding.py`. This is reviewed static metadata derived from Apple's local Shortcuts databases/framework surfaces; normal validation does not read live Shortcuts databases or call private frameworks.
 
