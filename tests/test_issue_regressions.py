@@ -128,7 +128,9 @@ class ToolkitSnapshotTests(unittest.TestCase):
             self.assertIn("is.workflow.actions.gettext", allowed_ids, rel_path)
             self.assertIn("is.workflow.actions.additemtolist", allowed_ids, rel_path)
             self.assertIn("is.workflow.actions.getselectedtext", allowed_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.AdjustVolumeIntent", allowed_ids, rel_path)
             self.assertIn("com.apple.HearingApp.MuteVolumeIntent", allowed_ids, rel_path)
+            self.assertIn("com.apple.HearingApp.SelectPresetIntent", allowed_ids, rel_path)
 
     def test_macos27_toolkit_ids_are_target_gated(self) -> None:
         for rel_path in (
@@ -168,7 +170,9 @@ class ToolkitSnapshotTests(unittest.TestCase):
             self.assertEqual("iOS Simulator", payload["platform"], rel_path)
             self.assertEqual("iOS 27.0 Simulator", payload["source_runtime"], rel_path)
             self.assertEqual(1206, len(payload["ids"]), rel_path)
+            self.assertIn("com.apple.HearingApp.AdjustVolumeIntent", payload["ids"], rel_path)
             self.assertIn("com.apple.HearingApp.MuteVolumeIntent", payload["ids"], rel_path)
+            self.assertIn("com.apple.HearingApp.SelectPresetIntent", payload["ids"], rel_path)
             self.assertIn("com.apple.SharingUIService.ShareIntent", payload["ids"], rel_path)
             self.assertNotIn("com.apple.HearingApp.MuteVolumeIntent", load_json(REPO_ROOT / rel_path.replace("-ios27", ""))["ids"], rel_path)
 
@@ -572,7 +576,11 @@ class OS27AutomatorsReferenceTests(unittest.TestCase):
             "com.apple.MobileSMS.SearchMessagesIntent",
             "com.apple.Photos.OpenAssetIntent",
             "com.apple.reminders.CreateSectionAppIntent",
+            "com.apple.HearingApp.AdjustVolumeIntent",
             "com.apple.HearingApp.MuteVolumeIntent",
+            "com.apple.HearingApp.SelectPresetIntent",
+            "HearingEarSelection",
+            "VolumeDirection",
             "Set Switch Control Switch Set",
             "com.apple.systempreferences.OpenAccessibilitySwitchControlStaticDeepLinks",
             "switchControlSwitches",
