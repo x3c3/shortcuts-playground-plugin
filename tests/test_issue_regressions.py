@@ -764,6 +764,36 @@ class AppleGroundingCatalogTests(unittest.TestCase):
 
 
 class OS27AutomatorsReferenceTests(unittest.TestCase):
+    def test_os27_target_gating_is_documented_in_skill_and_snapshot_docs(self) -> None:
+        required_terms = (
+            "target-gated ToolKit snapshots",
+            "OS 27-only parameters",
+            "WFAllowWebSearch",
+            "interpretAsMarkdown",
+            "WFAvoidTolls",
+            "Safari Tab Group `contents`",
+        )
+        for rel_path in (
+            "claude/skills/shortcuts-playground/SKILL.md",
+            "codex/skills/shortcuts-playground/SKILL.md",
+        ):
+            text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+            for term in required_terms:
+                self.assertIn(term, text, f"{rel_path}: {term}")
+
+        snapshot_terms = (
+            "OS 27-only parameter keys are rejected on macOS 26 targets",
+            "OS 27-era parameter keys are also target-gated",
+            "v78-only identifier or parameter key",
+        )
+        for rel_path in (
+            "claude/skills/shortcuts-playground/TOOLKIT_SNAPSHOT.md",
+            "codex/skills/shortcuts-playground/TOOLKIT_SNAPSHOT.md",
+        ):
+            text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+            for term in snapshot_terms:
+                self.assertIn(term, text, f"{rel_path}: {term}")
+
     def test_os27_action_parameter_updates_are_documented(self) -> None:
         required_action_terms = (
             "WFAllowWebSearch",

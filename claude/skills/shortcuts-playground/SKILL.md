@@ -1,6 +1,6 @@
 ---
 name: shortcuts-playground
-description: Build, validate, sign, archive, and REMIX macOS/iOS Shortcuts by creating plist files. Use when asked to create, modify, or remix shortcuts; automate workflows; build .shortcut files; or generate Shortcuts plists. Covers WF actions, AppIntents, third-party actions, variable references, and control flow using bundled ToolKit ID snapshots.
+description: Build, validate, sign, archive, and REMIX macOS/iOS Shortcuts by creating plist files. Use when asked to create, modify, or remix shortcuts; automate workflows; build .shortcut files; or generate Shortcuts plists. Covers WF actions, AppIntents, third-party actions, variable references, and control flow using bundled target-gated ToolKit snapshots.
 effort: max
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
@@ -158,7 +158,7 @@ Control flow actions (repeat, conditional, menu) use:
 | Text | `is.workflow.actions.gettext` | `WFTextActionText` |
 | Show Result | `is.workflow.actions.showresult` | `Text` |
 | Ask for Input | `is.workflow.actions.ask` | `WFAskActionPrompt`, `WFInputType` |
-| Use AI Model | `is.workflow.actions.askllm` | `WFLLMPrompt`, `WFLLMModel`, `WFGenerativeResultType` |
+| Use AI Model | `is.workflow.actions.askllm` | `WFLLMPrompt`, `WFLLMModel`, `WFGenerativeResultType`, `WFAllowWebSearch` (OS 27+) |
 | Comment | `is.workflow.actions.comment` | `WFCommentActionText` |
 | URL | `is.workflow.actions.url` | `WFURLActionURL` |
 | Get Contents of URL | `is.workflow.actions.downloadurl` | `WFURL`, `WFHTTPMethod` |
@@ -260,7 +260,7 @@ validate-shortcut /path/to/Shortcut.xml
 - **Regenerating from scratch** when only 1-2 specific actions need fixing. Targeted edits preserve working wiring.
 
 ### Data sources
-The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target macOS version, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default target is `auto` (`sw_vers` on macOS, latest snapshots outside macOS). Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building OS 27-era shortcuts that need the target-gated macOS/iOS v78 snapshots. It does not read the user's live ToolKit SQLite database during normal validation.
+The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target macOS version, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default target is `auto` (`sw_vers` on macOS, latest snapshots outside macOS). Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building OS 27-era shortcuts that need target-gated macOS/iOS v78 identifiers or OS 27-only parameters such as `WFAllowWebSearch`, `interpretAsMarkdown`, `WFAvoidTolls`, and Safari Tab Group `contents`. It does not read the user's live ToolKit SQLite database during normal validation.
 
 For reviewed Apple-derived macOS 27 schema grounding, use the static catalog only:
 

@@ -13,7 +13,7 @@ Only the identifiers needed for validation are bundled. This keeps the plugin li
 
 ## Validator behavior
 
-`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target macOS version, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`). OS 27 snapshots include both macOS 27 and iOS 27 Simulator ToolKit evidence.
+`scripts/validate_shortcut.py` loads packaged `data/toolkit-v*-tool-ids.json` files according to the target macOS version, then augments those snapshots with the markdown references (`ACTIONS.md`, `APPINTENTS.md`, `THIRD_PARTY_ACTIONS.md`). OS 27 snapshots include both macOS 27 and iOS 27 Simulator ToolKit evidence. It also target-gates the reviewed Automators OS 26 to 27 parameter deltas, so OS 27-only parameter keys are rejected on macOS 26 targets even when the action identifier itself predates OS 27.
 
 The default target is `auto`: on macOS it reads `sw_vers -productVersion`; outside macOS it falls back to the latest packaged snapshots. Override with `--target-macos 26`, `--target-macos 27`, or `--target-macos latest`. The same override is available via `SHORTCUTS_PLAYGROUND_TARGET_MACOS`.
 
@@ -22,6 +22,8 @@ This keeps validation portable and self-contained while avoiding false compatibi
 ## macOS 27 scope
 
 The v78 snapshot expands validation coverage for shortcuts created on macOS 27. It is only active when the target is macOS 27+ or `latest`. It is an identifier allowlist, not a complete authoring schema. If a v78-only action identifier is present but its parameter serialization is not documented in the reference files or a golden XML, do not guess the payload. Ask for an exported XML sample or use a documented fallback.
+
+OS 27-era parameter keys are also target-gated. Examples include `WFAllowWebSearch` on Use Model, `interpretAsMarkdown` on Notes actions, `WFAvoidTolls`/`WFAvoidHighways` on Maps route actions, `WFAppsExcept` on Hide/Quit App, `imageFile` on Scan QR or Barcode, and `contents` on Safari Create Tab Group.
 
 ## iOS 27 simulator scope
 
@@ -38,6 +40,6 @@ python3 scripts/lookup_action_grounding.py --identifier additemtolist --target-m
 python3 scripts/lookup_action_grounding.py --python-name com_apple_shortcuts_add_item_to_list --json
 ```
 
-The grounding catalog can improve authoring confidence, but it does not override target availability. If `validate_shortcut.py --target-macos 26` rejects a v78-only identifier, the static grounding entry is only a note that the action exists on macOS 27+.
+The grounding catalog can improve authoring confidence, but it does not override target availability. If `validate_shortcut.py --target-macos 26` rejects a v78-only identifier or parameter key, the static grounding entry is only a note that the action or parameter exists in OS 27-era ToolKit metadata.
 
 `lookup_action_grounding.py` computes per-action availability from the packaged ToolKit snapshots, not from the grounding catalog's source OS. Older actions that appear in the macOS 27 grounding catalog still remain available to older targets when they are present in `toolkit-v63`.
