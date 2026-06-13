@@ -8,6 +8,7 @@ This skill bundles precomputed action-ID allowlists so it can be shared without 
 - `data/toolkit-v78-tool-ids.json` - flat list of 2,731 action/intent identifiers from macOS 27 Golden Gate build 26A5353q.
 - `data/toolkit-v78-ios27-tool-ids.json` - flat list of 1,206 action/intent identifiers from an iOS 27.0 Simulator ToolKit v78 database.
 - `data/toolkit-v78-first-party-parameter-keys.json` - compact first-party ToolKit v78 parameter-key catalog used by `lookup_action_grounding.py` for broad AppIntent/schema discovery.
+- `data/toolkit-v78-trigger-parameter-keys.json` - compact ToolKit v78 automation trigger catalog with trigger IDs, Python names, parameter keys, and output type identifiers.
 - `data/macos27-shortpy-grounding.json` - reviewed static Apple-derived macOS 27 grounding catalog with ToolKit `pythonName`, Apple Shortpy keyword, ToolRenderer utility, and ShortcutsLanguage syntax evidence.
 
 Only the identifiers needed for validation are bundled. This keeps the plugin lightweight compared with the full ToolKit SQLite metadata.
@@ -44,3 +45,9 @@ python3 scripts/lookup_action_grounding.py --python-name com_apple_shortcuts_add
 The grounding catalog can improve authoring confidence, but it does not override target availability. If `validate_shortcut.py --target-macos 26` rejects a v78-only identifier or parameter key, the static grounding entry is only a note that the action or parameter exists in OS 27-era ToolKit metadata.
 
 `lookup_action_grounding.py` computes per-action availability from the packaged ToolKit snapshots, not from the grounding catalog's source OS. Older actions that appear in the macOS 27 grounding catalog still remain available to older targets when they are present in `toolkit-v63`.
+
+## Automation trigger metadata
+
+`data/toolkit-v78-trigger-parameter-keys.json` packages the 42 automation triggers exposed in local macOS 27 and iOS 27 Simulator ToolKit v78 databases. This includes identifiers such as `com.apple.shortcuts.WFTimeOfDayTrigger.at_time_on_recurring_day`, Apple Shortpy-style names such as `when_app_opened`, trigger parameter keys, and raw output type identifiers.
+
+This catalog is discovery metadata only. It does not prove importable Personal Automation or inline trigger serialization, and the validator does not validate top-level automation trigger payloads. Use [AUTOMATION_TRIGGERS.md](AUTOMATION_TRIGGERS.md) and `lookup_action_grounding.py` to request precise exported samples or to enrich future authoring work, not to emit automation database rows.

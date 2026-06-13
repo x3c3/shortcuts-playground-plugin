@@ -28,6 +28,7 @@ TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
     "toolkit-v78-ios27": 27,
 }
 PARAMETER_CATALOG_MIN_MACOS_MAJOR = 27
+TRIGGER_CATALOG_MIN_MACOS_MAJOR = 27
 
 
 def toolkit_snapshot_min_macos_major(version: str | None) -> int | None:
@@ -55,6 +56,10 @@ def parameter_catalog_path(base: Path | None = None) -> Path:
     return (base or skill_dir()) / "data/toolkit-v78-first-party-parameter-keys.json"
 
 
+def trigger_catalog_path(base: Path | None = None) -> Path:
+    return (base or skill_dir()) / "data/toolkit-v78-trigger-parameter-keys.json"
+
+
 def load_catalog(base: Path | None = None) -> dict[str, Any]:
     path = catalog_path(base)
     with path.open("r", encoding="utf-8") as handle:
@@ -65,6 +70,14 @@ def load_parameter_catalog(base: Path | None = None) -> dict[str, Any]:
     path = parameter_catalog_path(base)
     if not path.exists():
         return {"tools": {}}
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_trigger_catalog(base: Path | None = None) -> dict[str, Any]:
+    path = trigger_catalog_path(base)
+    if not path.exists():
+        return {"triggers": {}}
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -183,6 +196,29 @@ def parameter_entry_to_grounding(identifier: str, entry: dict[str, Any]) -> dict
     }
 
 
+def trigger_entry_to_grounding(identifier: str, entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "toolkit-trigger-summary",
+        "minimumMacOSMajor": TRIGGER_CATALOG_MIN_MACOS_MAJOR,
+        "name": entry.get("displayName") or identifier,
+        "pythonName": entry.get("pythonName"),
+        "summary": (
+            "ToolKit v78 automation-trigger metadata. This proves the trigger "
+            "exists and names its parameters, but it is not an import-ready "
+            "automation plist schema."
+        ),
+        "toolkitPlatforms": entry.get("platforms") or [],
+        "toolkitTriggerSummary": {
+            "parameterCount": entry.get("parameterCount"),
+            "parameters": entry.get("parameters") or [],
+            "outputTypeIdentifiers": entry.get("outputTypeIdentifiers") or [],
+        },
+        "parameters": [],
+        "sourceFunctions": {},
+        "sampleShortcuts": [],
+    }
+
+
 def augment_with_parameter_summary(
     identifier: str,
     entry: dict[str, Any],
@@ -232,6 +268,36 @@ def find_parameter_by_python_name(
     return matches[0] if len(matches) == 1 else None
 
 
+def find_trigger_by_identifier(
+    trigger_catalog: dict[str, Any],
+    value: str,
+) -> tuple[str, dict[str, Any]] | None:
+    triggers = trigger_catalog.get("triggers") or {}
+    entry = triggers.get(value)
+    if isinstance(entry, dict):
+        return value, trigger_entry_to_grounding(value, entry)
+    suffix = value.removeprefix("com.apple.shortcuts.")
+    matches = [
+        (identifier, trigger_entry_to_grounding(identifier, entry))
+        for identifier, entry in triggers.items()
+        if identifier.endswith(suffix) or identifier.rsplit(".", 1)[-1] == suffix
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def find_trigger_by_python_name(
+    trigger_catalog: dict[str, Any],
+    value: str,
+) -> tuple[str, dict[str, Any]] | None:
+    triggers = trigger_catalog.get("triggers") or {}
+    matches = [
+        (identifier, trigger_entry_to_grounding(identifier, entry))
+        for identifier, entry in triggers.items()
+        if entry.get("pythonName") == value
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def entry_search_text(identifier: str, entry: dict[str, Any]) -> str:
     parts: list[str] = [
         identifier,
@@ -258,6 +324,19 @@ def entry_search_text(identifier: str, entry: dict[str, Any]) -> str:
                 parts.extend(
                     [
                         parameter.get("key") or "",
+                        parameter.get("typePythonName") or "",
+                        " ".join(toolkit_parameter_type_names(parameter)),
+                    ]
+                )
+    trigger_summary = entry.get("toolkitTriggerSummary") or {}
+    if isinstance(trigger_summary, dict):
+        parts.append(" ".join(trigger_summary.get("outputTypeIdentifiers") or []))
+        for parameter in trigger_summary.get("parameters") or []:
+            if isinstance(parameter, dict):
+                parts.extend(
+                    [
+                        parameter.get("key") or "",
+                        parameter.get("name") or "",
                         parameter.get("typePythonName") or "",
                         " ".join(toolkit_parameter_type_names(parameter)),
                     ]
@@ -289,6 +368,26 @@ def search_parameter_entries(
     entries = sorted((parameter_catalog.get("tools") or {}).items())
     converted = [
         (identifier, parameter_entry_to_grounding(identifier, entry))
+        for identifier, entry in entries
+    ]
+    if not terms:
+        return converted[:limit]
+    return [
+        (identifier, entry)
+        for identifier, entry in converted
+        if all(term in entry_search_text(identifier, entry) for term in terms)
+    ][:limit]
+
+
+def search_trigger_entries(
+    trigger_catalog: dict[str, Any],
+    query: str,
+    limit: int,
+) -> list[tuple[str, dict[str, Any]]]:
+    terms = [term.lower() for term in query.split() if term]
+    entries = sorted((trigger_catalog.get("triggers") or {}).items())
+    converted = [
+        (identifier, trigger_entry_to_grounding(identifier, entry))
         for identifier, entry in entries
     ]
     if not terms:
@@ -352,6 +451,17 @@ def parameter_metadata_note(
     )
 
 
+def trigger_metadata_note(entry: dict[str, Any], target_macos: int | None) -> str | None:
+    if target_macos is None or target_macos >= TRIGGER_CATALOG_MIN_MACOS_MAJOR:
+        return None
+    if not isinstance(entry.get("toolkitTriggerSummary"), dict):
+        return None
+    return (
+        f"Trigger metadata is from OS {TRIGGER_CATALOG_MIN_MACOS_MAJOR} ToolKit; "
+        f"target macOS is {target_macos}."
+    )
+
+
 def entry_min_macos(identifier: str, availability: dict[str, int | None]) -> int | None:
     return availability.get(identifier)
 
@@ -376,6 +486,12 @@ def compact_entry(
             target_macos,
             minimum,
         ),
+        "triggerMetadataMinimumMacOSMajor": (
+            TRIGGER_CATALOG_MIN_MACOS_MAJOR
+            if isinstance(entry.get("toolkitTriggerSummary"), dict)
+            else None
+        ),
+        "triggerMetadataAvailabilityNote": trigger_metadata_note(entry, target_macos),
         "platformAvailabilityNote": platform_availability_note(entry),
         "name": entry.get("name"),
         "pythonName": entry.get("pythonName"),
@@ -386,6 +502,7 @@ def compact_entry(
         "toolkitPlatforms": entry.get("toolkitPlatforms") or [],
         "toolkitToolType": entry.get("toolkitToolType"),
         "toolkitParameterSummary": entry.get("toolkitParameterSummary") or {},
+        "toolkitTriggerSummary": entry.get("toolkitTriggerSummary") or {},
         "sourceFunctions": entry.get("sourceFunctions") or {},
         "sampleShortcuts": entry.get("sampleShortcuts") or [],
     }
@@ -412,6 +529,9 @@ def print_markdown_entry(
     parameter_note = parameter_metadata_note(entry, target_macos, minimum)
     if parameter_note:
         print(f"- Parameter metadata availability: {parameter_note}")
+    trigger_note = trigger_metadata_note(entry, target_macos)
+    if trigger_note:
+        print(f"- Trigger metadata availability: {trigger_note}")
     platform_note = platform_availability_note(entry)
     if platform_note:
         print(f"- Platform availability: {platform_note}")
@@ -452,6 +572,28 @@ def print_markdown_entry(
                     "`, `".join(toolkit_parameter_type_names(parameter)),
                 )
             )
+    trigger_summary = entry.get("toolkitTriggerSummary") or {}
+    trigger_parameters = trigger_summary.get("parameters") if isinstance(trigger_summary, dict) else None
+    if trigger_parameters:
+        print()
+        print("| Trigger key | Name | Type |")
+        print("|-------------|------|------|")
+        for parameter in trigger_parameters:
+            print(
+                "| `{}` | {} | `{}` |".format(
+                    parameter.get("key") or "",
+                    parameter.get("name") or "",
+                    "`, `".join(toolkit_parameter_type_names(parameter)),
+                )
+            )
+    output_types = (
+        trigger_summary.get("outputTypeIdentifiers")
+        if isinstance(trigger_summary, dict)
+        else None
+    )
+    if output_types:
+        print()
+        print("- Trigger output types: " + ", ".join(f"`{item}`" for item in output_types))
 
 
 def main() -> int:
@@ -473,6 +615,7 @@ def main() -> int:
         return 2
     catalog = load_catalog()
     parameter_catalog = load_parameter_catalog()
+    trigger_catalog = load_trigger_catalog()
     availability = load_identifier_min_macos()
 
     results: list[tuple[str, dict[str, Any]]]
@@ -485,6 +628,8 @@ def main() -> int:
             )
         else:
             found = find_parameter_by_identifier(parameter_catalog, args.identifier)
+        if not found:
+            found = find_trigger_by_identifier(trigger_catalog, args.identifier)
         results = [found] if found else []
     elif args.python_name:
         found = find_by_python_name(catalog, args.python_name)
@@ -495,6 +640,8 @@ def main() -> int:
             )
         else:
             found = find_parameter_by_python_name(parameter_catalog, args.python_name)
+        if not found:
+            found = find_trigger_by_python_name(trigger_catalog, args.python_name)
         results = [found] if found else []
     elif args.query:
         results = [
@@ -505,6 +652,15 @@ def main() -> int:
         if len(results) < args.limit:
             for identifier, entry in search_parameter_entries(
                 parameter_catalog,
+                args.query,
+                args.limit - len(results),
+            ):
+                if identifier not in seen:
+                    results.append((identifier, entry))
+                    seen.add(identifier)
+        if len(results) < args.limit:
+            for identifier, entry in search_trigger_entries(
+                trigger_catalog,
                 args.query,
                 args.limit - len(results),
             ):
@@ -537,6 +693,11 @@ def main() -> int:
             for identifier, entry in results
         ]
         unique_parameter_notes = sorted({note for note in parameter_notes if note})
+        trigger_notes = [
+            trigger_metadata_note(entry, target_macos)
+            for _, entry in results
+        ]
+        unique_trigger_notes = sorted({note for note in trigger_notes if note})
         payload = {
             "catalog": {
                 "schemaVersion": catalog.get("schemaVersion"),
@@ -548,6 +709,9 @@ def main() -> int:
             "availabilityNote": unique_notes[0] if len(unique_notes) == 1 else None,
             "parameterMetadataAvailabilityNote": (
                 unique_parameter_notes[0] if len(unique_parameter_notes) == 1 else None
+            ),
+            "triggerMetadataAvailabilityNote": (
+                unique_trigger_notes[0] if len(unique_trigger_notes) == 1 else None
             ),
             "platformAvailabilityNote": (
                 unique_platform_notes[0] if len(unique_platform_notes) == 1 else None

@@ -4,6 +4,12 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ## Unreleased
 
+### Added - OS 27 automation trigger metadata
+
+- Added a compact ToolKit v78 automation trigger catalog covering 42 triggers from local macOS 27 and iOS 27 Simulator databases.
+- Updated `lookup_action_grounding.py` so trigger identifiers and Apple Python names such as `when_app_opened` resolve from packaged metadata.
+- Added `AUTOMATION_TRIGGERS.md` and guardrails clarifying that trigger metadata is research-only until exported automation/shortcut samples prove importable serialization.
+
 ### Fixed - AppIntent validation and package checks
 
 - Added `markdownContents` to the Notes create content-key validator so `com.apple.Notes.CreateNoteFromMarkdownLinkAction` no longer needs a false-positive waiver when using the runtime-correct AppIntent parameter.

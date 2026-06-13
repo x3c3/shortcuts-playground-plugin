@@ -615,6 +615,10 @@ class AppleGroundingCatalogTests(unittest.TestCase):
         "claude/skills/shortcuts-playground/data/toolkit-v78-first-party-parameter-keys.json",
         "codex/skills/shortcuts-playground/data/toolkit-v78-first-party-parameter-keys.json",
     )
+    TRIGGER_CATALOG_PATHS = (
+        "claude/skills/shortcuts-playground/data/toolkit-v78-trigger-parameter-keys.json",
+        "codex/skills/shortcuts-playground/data/toolkit-v78-trigger-parameter-keys.json",
+    )
     LOOKUP_SCRIPTS = (
         "claude/skills/shortcuts-playground/scripts/lookup_action_grounding.py",
         "codex/skills/shortcuts-playground/scripts/lookup_action_grounding.py",
@@ -683,6 +687,38 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             )
             self.assertTrue(
                 all("description" not in parameter for parameter in send_message["parameters"]),
+                rel_path,
+            )
+
+    def test_toolkit_v78_trigger_catalog_is_packaged(self) -> None:
+        for rel_path in self.TRIGGER_CATALOG_PATHS:
+            catalog = load_json(REPO_ROOT / rel_path)
+
+            self.assertEqual("toolkit-v78-trigger-parameter-keys", catalog["version"], rel_path)
+            self.assertIn("not an import-ready automation plist schema", catalog["scope"], rel_path)
+            self.assertEqual(42, len(catalog["triggers"]), rel_path)
+
+            time_of_day = catalog["triggers"][
+                "com.apple.shortcuts.WFTimeOfDayTrigger.at_time_on_recurring_day"
+            ]
+            self.assertEqual("Time of Day", time_of_day["displayName"], rel_path)
+            self.assertEqual(
+                "when_time_of_day_at_time_on_recurring_day",
+                time_of_day["pythonName"],
+                rel_path,
+            )
+            self.assertEqual(["iOS 27 Simulator", "macOS 27"], time_of_day["platforms"], rel_path)
+            self.assertEqual(
+                {"WFTime", "WFRecurrence"},
+                {parameter["key"] for parameter in time_of_day["parameters"]},
+                rel_path,
+            )
+
+            app_opened = catalog["triggers"]["com.apple.shortcuts.WFAppInFocusTrigger.opened"]
+            self.assertEqual("when_app_opened", app_opened["pythonName"], rel_path)
+            self.assertEqual(
+                {"WFSelectedApps", "WFAppState"},
+                {parameter["key"] for parameter in app_opened["parameters"]},
                 rel_path,
             )
 
@@ -862,6 +898,41 @@ class AppleGroundingCatalogTests(unittest.TestCase):
                 rel_path,
             )
 
+    def test_lookup_action_grounding_resolves_trigger_metadata(self) -> None:
+        expected_note = "Trigger metadata is from OS 27 ToolKit; target macOS is 26."
+        for rel_path in self.LOOKUP_SCRIPTS:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / rel_path),
+                    "--python-name",
+                    "when_app_opened",
+                    "--target-macos",
+                    "26",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            entry = payload["results"][0]
+
+            self.assertEqual(expected_note, payload["triggerMetadataAvailabilityNote"], rel_path)
+            self.assertEqual(expected_note, entry["triggerMetadataAvailabilityNote"], rel_path)
+            self.assertEqual("toolkit-trigger-summary", entry["status"], rel_path)
+            self.assertEqual("com.apple.shortcuts.WFAppInFocusTrigger.opened", entry["identifier"], rel_path)
+            self.assertEqual("when_app_opened", entry["pythonName"], rel_path)
+            self.assertEqual(27, entry["triggerMetadataMinimumMacOSMajor"], rel_path)
+            self.assertEqual(
+                {"WFSelectedApps", "WFAppState"},
+                {
+                    parameter["key"]
+                    for parameter in entry["toolkitTriggerSummary"]["parameters"]
+                },
+                rel_path,
+            )
+
 
 class OS27AutomatorsReferenceTests(unittest.TestCase):
     def test_os27_target_gating_is_documented_in_skill_and_snapshot_docs(self) -> None:
@@ -886,6 +957,8 @@ class OS27AutomatorsReferenceTests(unittest.TestCase):
             "OS 27-era parameter keys are also target-gated",
             "v78-only identifier or parameter key",
             "toolkit-v78-first-party-parameter-keys.json",
+            "toolkit-v78-trigger-parameter-keys.json",
+            "Automation trigger metadata",
         )
         for rel_path in (
             "claude/skills/shortcuts-playground/TOOLKIT_SNAPSHOT.md",
@@ -893,6 +966,21 @@ class OS27AutomatorsReferenceTests(unittest.TestCase):
         ):
             text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
             for term in snapshot_terms:
+                self.assertIn(term, text, f"{rel_path}: {term}")
+
+        trigger_terms = (
+            "Automation Triggers",
+            "com.apple.shortcuts.WFTimeOfDayTrigger.at_time_on_recurring_day",
+            "when_app_opened",
+            "research metadata only",
+            "ZUNIFIEDTRIGGER",
+        )
+        for rel_path in (
+            "claude/skills/shortcuts-playground/AUTOMATION_TRIGGERS.md",
+            "codex/skills/shortcuts-playground/AUTOMATION_TRIGGERS.md",
+        ):
+            text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+            for term in trigger_terms:
                 self.assertIn(term, text, f"{rel_path}: {term}")
 
     def test_os27_action_parameter_updates_are_documented(self) -> None:

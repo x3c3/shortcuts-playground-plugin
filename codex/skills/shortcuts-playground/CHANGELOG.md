@@ -1,5 +1,20 @@
 # Autoresearch Loop Changelog
 
+## Date: June 13, 2026 - OS 27 trigger metadata audit
+
+### Summary
+
+Reviewed the plugin's shipped AppIntent/ToolKit coverage against the local macOS 27 and iOS 27 Simulator ToolKit databases and closed the remaining structured metadata gap: automation triggers.
+
+### Fixes Applied
+
+- Verified the shipped macOS 27 and iOS 27 Simulator v78 action ID snapshots exactly match the local ToolKit databases, and verified the first-party parameter catalog has no missing, stale, or mismatched rows.
+- Added `data/toolkit-v78-trigger-parameter-keys.json`, a compact static catalog of 42 ToolKit v78 automation triggers with identifiers, Apple Python names, parameter keys, platform labels, and output type identifiers.
+- Added `AUTOMATION_TRIGGERS.md` so trigger metadata is discoverable without implying import-ready automation support.
+- Updated `lookup_action_grounding.py` so trigger IDs, trigger Python names such as `when_app_opened`, and trigger searches resolve from packaged static metadata.
+- Documented that trigger metadata is research-only until exported automation/shortcut samples prove the top-level Personal Automation or inline trigger serialization.
+- Added issue-regression coverage for trigger catalog packaging, trigger lookup, and docs guardrails.
+
 ## Date: June 13, 2026 - AppIntent validator gap audit
 
 ### Summary
