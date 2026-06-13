@@ -64,12 +64,15 @@ These entries document authoring metadata. They do not prove runtime availabilit
 | Delete Lists | `com.apple.reminders.DeleteListsAppIntent` | macOS 27 v78 | `entities` |
 | Delete Groups | `com.apple.reminders.DeleteRemindersListGroupsAppIntent` | macOS 27 v78 | `entities`, `deleteSublists` |
 | Delete Sections | `com.apple.reminders.DeleteSectionsAppIntent` | macOS 27 v78 | `entities` |
+| Set Switch Control | `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleSwitchControlIntent` | macOS 27 v78 | `operation`, `state`, `ShowWhenRun` |
+| Get Switch Control | `com.apple.systempreferences.AxFeatureSwitchcontrolEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Update Switch Control | `com.apple.systempreferences.AxFeatureSwitchcontrolEntity-UpdatableEntity` | macOS 27 v78 | `entity`, `value` |
 | Set Motion Cues | `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent` | macOS 27 v78 | `operation`, `state`, `ShowWhenRun` |
 | Get Vehicle Motion Cues | `com.apple.systempreferences.AxMotionCuesEnabledEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
 | Update Vehicle Motion Cues | `com.apple.systempreferences.AxMotionCuesEnabledEntity-UpdatableEntity` | macOS 27 v78 | `entity`, `value` |
 | Mute Hearing Device Volume | `com.apple.HearingApp.MuteVolumeIntent` | iOS 27 Simulator v78 | none |
 
-The Automators thread reports **Toggle Vehicle Motion Cues**; the closest confirmed ToolKit match is `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent`, localized as **Set Motion Cues** in the local macOS 27 v78 database. It also reports **Set Switch Control Switch Set**; that exact action was not found in the local macOS 27 v78 database or the hydrated iOS 27 Simulator v78 database used here. Do not author Switch Control switch-set changes until an exported shortcut or a device ToolKit database confirms the identifier and parameter schema.
+The Automators thread reports **Toggle Vehicle Motion Cues**; the closest confirmed ToolKit match is `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent`, localized as **Set Motion Cues** in the local macOS 27 v78 database. It also reports **Set Switch Control Switch Set**; the local macOS 27 v78 database has **Set Switch Control** as a simple on/off intent, but no switch-set picker variant, and the hydrated iPhone/iPadOS 27 Simulator v78 databases do not include Switch Control settings actions. Do not author Switch Control switch-set changes until an exported shortcut or a device ToolKit database confirms the identifier and parameter schema.
 
 ## How to Invoke AppIntents
 
