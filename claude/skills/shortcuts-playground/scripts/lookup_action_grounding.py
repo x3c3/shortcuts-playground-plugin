@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Look up reviewed Apple-derived Shortcuts grounding metadata.
 
-This helper reads the packaged static macOS 27 Shortpy catalog. It never reads
-the user's live Shortcuts databases and never calls private Apple frameworks.
-Use it as an authoring aid when a macOS 27 action or Apple Shortpy function name
-needs additional grounding beyond the markdown references.
+This helper reads the packaged static macOS 27 Shortpy catalog and a compact
+ToolKit v78 first-party parameter-key snapshot. It never reads the user's live
+Shortcuts databases and never calls private Apple frameworks. Use it as an
+authoring aid when a macOS 27 action or Apple Shortpy function name needs
+additional grounding beyond the markdown references.
 """
 
 from __future__ import annotations
@@ -49,8 +50,20 @@ def catalog_path(base: Path | None = None) -> Path:
     return (base or skill_dir()) / "data/macos27-shortpy-grounding.json"
 
 
+def parameter_catalog_path(base: Path | None = None) -> Path:
+    return (base or skill_dir()) / "data/toolkit-v78-first-party-parameter-keys.json"
+
+
 def load_catalog(base: Path | None = None) -> dict[str, Any]:
     path = catalog_path(base)
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_parameter_catalog(base: Path | None = None) -> dict[str, Any]:
+    path = parameter_catalog_path(base)
+    if not path.exists():
+        return {"tools": {}}
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -148,6 +161,76 @@ def find_by_python_name(catalog: dict[str, Any], value: str) -> tuple[str, dict[
     return None
 
 
+def parameter_entry_to_grounding(identifier: str, entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "toolkit-parameter-summary",
+        "name": entry.get("displayName") or identifier,
+        "pythonName": entry.get("pythonName"),
+        "summary": (
+            "ToolKit v78 parameter-key summary. This proves the action exists "
+            "and names its parameters, but it is not a full authored shortcut sample."
+        ),
+        "toolkitPlatforms": entry.get("platforms") or [],
+        "toolkitToolType": entry.get("toolType"),
+        "toolkitParameterSummary": {
+            "parameterCount": entry.get("parameterCount"),
+            "parameters": entry.get("parameters") or [],
+        },
+        "parameters": [],
+        "sourceFunctions": {},
+        "sampleShortcuts": [],
+    }
+
+
+def augment_with_parameter_summary(
+    identifier: str,
+    entry: dict[str, Any],
+    parameter_catalog: dict[str, Any],
+) -> dict[str, Any]:
+    toolkit_entry = (parameter_catalog.get("tools") or {}).get(identifier)
+    if not isinstance(toolkit_entry, dict):
+        return entry
+    out = dict(entry)
+    out["toolkitPlatforms"] = toolkit_entry.get("platforms") or []
+    out["toolkitToolType"] = toolkit_entry.get("toolType")
+    out["toolkitParameterSummary"] = {
+        "parameterCount": toolkit_entry.get("parameterCount"),
+        "parameters": toolkit_entry.get("parameters") or [],
+    }
+    return out
+
+
+def find_parameter_by_identifier(
+    parameter_catalog: dict[str, Any],
+    value: str,
+) -> tuple[str, dict[str, Any]] | None:
+    tools = parameter_catalog.get("tools") or {}
+    for key in (value, normalized_identifier(value)):
+        entry = tools.get(key)
+        if isinstance(entry, dict):
+            return key, parameter_entry_to_grounding(key, entry)
+    suffix = value.removeprefix("is.workflow.actions.")
+    matches = [
+        (identifier, parameter_entry_to_grounding(identifier, entry))
+        for identifier, entry in tools.items()
+        if identifier.endswith(f".{suffix}") or identifier.rsplit(".", 1)[-1] == suffix
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def find_parameter_by_python_name(
+    parameter_catalog: dict[str, Any],
+    value: str,
+) -> tuple[str, dict[str, Any]] | None:
+    tools = parameter_catalog.get("tools") or {}
+    matches = [
+        (identifier, parameter_entry_to_grounding(identifier, entry))
+        for identifier, entry in tools.items()
+        if entry.get("pythonName") == value
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def entry_search_text(identifier: str, entry: dict[str, Any]) -> str:
     parts: list[str] = [
         identifier,
@@ -167,6 +250,16 @@ def entry_search_text(identifier: str, entry: dict[str, Any]) -> str:
                 parameter.get("description") or "",
             ]
         )
+    toolkit_summary = entry.get("toolkitParameterSummary") or {}
+    if isinstance(toolkit_summary, dict):
+        for parameter in toolkit_summary.get("parameters") or []:
+            if isinstance(parameter, dict):
+                parts.extend(
+                    [
+                        parameter.get("key") or "",
+                        parameter.get("typePythonName") or "",
+                    ]
+                )
     return "\n".join(parts).lower()
 
 
@@ -183,6 +276,26 @@ def search_entries(catalog: dict[str, Any], query: str, limit: int) -> list[tupl
         if all(term in entry_search_text(identifier, entry) for term in terms)
     ]
     return matches[:limit]
+
+
+def search_parameter_entries(
+    parameter_catalog: dict[str, Any],
+    query: str,
+    limit: int,
+) -> list[tuple[str, dict[str, Any]]]:
+    terms = [term.lower() for term in query.split() if term]
+    entries = sorted((parameter_catalog.get("tools") or {}).items())
+    converted = [
+        (identifier, parameter_entry_to_grounding(identifier, entry))
+        for identifier, entry in entries
+    ]
+    if not terms:
+        return converted[:limit]
+    return [
+        (identifier, entry)
+        for identifier, entry in converted
+        if all(term in entry_search_text(identifier, entry) for term in terms)
+    ][:limit]
 
 
 def target_note(minimum: int | None, target_macos: int | None) -> str | None:
@@ -213,6 +326,9 @@ def compact_entry(
         "toolRendererScriptingUtility": entry.get("toolRendererScriptingUtility"),
         "summary": entry.get("summary"),
         "parameters": entry.get("parameters") or [],
+        "toolkitPlatforms": entry.get("toolkitPlatforms") or [],
+        "toolkitToolType": entry.get("toolkitToolType"),
+        "toolkitParameterSummary": entry.get("toolkitParameterSummary") or {},
         "sourceFunctions": entry.get("sourceFunctions") or {},
         "sampleShortcuts": entry.get("sampleShortcuts") or [],
     }
@@ -260,6 +376,19 @@ def print_markdown_entry(
                     parameter.get("label") or "",
                 )
             )
+    toolkit_summary = entry.get("toolkitParameterSummary") or {}
+    toolkit_parameters = toolkit_summary.get("parameters") if isinstance(toolkit_summary, dict) else None
+    if toolkit_parameters:
+        print()
+        print("| ToolKit key | Type |")
+        print("|-------------|------|")
+        for parameter in toolkit_parameters:
+            print(
+                "| `{}` | `{}` |".format(
+                    parameter.get("key") or "",
+                    parameter.get("typePythonName") or "",
+                )
+            )
 
 
 def main() -> int:
@@ -280,19 +409,54 @@ def main() -> int:
         print(str(exc))
         return 2
     catalog = load_catalog()
+    parameter_catalog = load_parameter_catalog()
     availability = load_identifier_min_macos()
 
     results: list[tuple[str, dict[str, Any]]]
     if args.identifier:
         found = find_by_identifier(catalog, args.identifier)
+        if found:
+            found = (
+                found[0],
+                augment_with_parameter_summary(found[0], found[1], parameter_catalog),
+            )
+        else:
+            found = find_parameter_by_identifier(parameter_catalog, args.identifier)
         results = [found] if found else []
     elif args.python_name:
         found = find_by_python_name(catalog, args.python_name)
+        if found:
+            found = (
+                found[0],
+                augment_with_parameter_summary(found[0], found[1], parameter_catalog),
+            )
+        else:
+            found = find_parameter_by_python_name(parameter_catalog, args.python_name)
         results = [found] if found else []
     elif args.query:
-        results = search_entries(catalog, args.query, args.limit)
+        results = [
+            (identifier, augment_with_parameter_summary(identifier, entry, parameter_catalog))
+            for identifier, entry in search_entries(catalog, args.query, args.limit)
+        ]
+        seen = {identifier for identifier, _ in results}
+        if len(results) < args.limit:
+            for identifier, entry in search_parameter_entries(
+                parameter_catalog,
+                args.query,
+                args.limit - len(results),
+            ):
+                if identifier not in seen:
+                    results.append((identifier, entry))
+                    seen.add(identifier)
     else:
-        results = search_entries(catalog, "", args.limit) if args.list else []
+        results = (
+            [
+                (identifier, augment_with_parameter_summary(identifier, entry, parameter_catalog))
+                for identifier, entry in search_entries(catalog, "", args.limit)
+            ]
+            if args.list
+            else []
+        )
 
     if args.json:
         result_notes = [

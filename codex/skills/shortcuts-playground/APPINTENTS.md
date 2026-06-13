@@ -4,6 +4,8 @@ Complete catalog of all 1632 first-party AppIntent actions from macOS ToolKit v6
 
 OS 27 ToolKit v78 snapshots add more AppIntent, Siri intent, and flow-tool identifiers to the packaged validator allowlist. Those v78 identifiers are validation coverage only unless their schemas are documented here, in another reference file, or in a golden/exported XML sample.
 
+The packaged `data/toolkit-v78-first-party-parameter-keys.json` file adds a broader **parameter-key coverage tier** for OS 27 exploration: 2,585 first-party `com.apple.*` and `is.workflow.actions.*` ToolKit rows from local macOS 27 and iOS 27 Simulator databases, with platform labels, Python names, tool types, parameter keys, and type names. It intentionally omits Apple descriptions and does not prove that an action is authoring-safe. `scripts/lookup_action_grounding.py` uses this snapshot as a fallback when an action is allowlisted but absent from the curated Shortpy grounding catalog.
+
 ## AppIntents vs WF*Actions
 
 | Aspect | WF*Actions | AppIntents |

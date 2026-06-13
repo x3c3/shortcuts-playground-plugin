@@ -437,6 +437,10 @@ class AppleGroundingCatalogTests(unittest.TestCase):
         "claude/skills/shortcuts-playground/data/macos27-shortpy-grounding.json",
         "codex/skills/shortcuts-playground/data/macos27-shortpy-grounding.json",
     )
+    PARAMETER_CATALOG_PATHS = (
+        "claude/skills/shortcuts-playground/data/toolkit-v78-first-party-parameter-keys.json",
+        "codex/skills/shortcuts-playground/data/toolkit-v78-first-party-parameter-keys.json",
+    )
     LOOKUP_SCRIPTS = (
         "claude/skills/shortcuts-playground/scripts/lookup_action_grounding.py",
         "codex/skills/shortcuts-playground/scripts/lookup_action_grounding.py",
@@ -470,6 +474,28 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertTrue(syntax["supportsElifSyntax"], rel_path)
             self.assertTrue(syntax["supportsListLiterals"], rel_path)
             self.assertEqual("is.workflow.actions.appendvariable", syntax["appendActionIdentifier"], rel_path)
+
+    def test_toolkit_v78_parameter_key_catalog_is_packaged(self) -> None:
+        for rel_path in self.PARAMETER_CATALOG_PATHS:
+            catalog = load_json(REPO_ROOT / rel_path)
+
+            self.assertEqual("toolkit-v78-first-party-parameter-keys", catalog["version"], rel_path)
+            self.assertIn("Descriptions are intentionally omitted", catalog["scope"], rel_path)
+            self.assertEqual(2585, len(catalog["tools"]), rel_path)
+
+            send_message = catalog["tools"]["com.apple.MobileSMS.SendMessageIntent"]
+            self.assertEqual("messages_send_message", send_message["pythonName"], rel_path)
+            self.assertEqual("Send Message", send_message["displayName"], rel_path)
+            self.assertIn("macOS 27", send_message["platforms"], rel_path)
+            self.assertIn("iOS 27 Simulator", send_message["platforms"], rel_path)
+            self.assertEqual(8, send_message["parameterCount"], rel_path)
+            parameter_keys = {parameter["key"] for parameter in send_message["parameters"]}
+            self.assertIn("content", parameter_keys, rel_path)
+            self.assertIn("scheduledDate", parameter_keys, rel_path)
+            self.assertTrue(
+                all("description" not in parameter for parameter in send_message["parameters"]),
+                rel_path,
+            )
 
     def test_lookup_action_grounding_resolves_identifier_and_target_warning(self) -> None:
         for rel_path in self.LOOKUP_SCRIPTS:
@@ -547,6 +573,37 @@ class AppleGroundingCatalogTests(unittest.TestCase):
             self.assertEqual("is.workflow.actions.runshellscript", payload["results"][0]["identifier"], rel_path)
             self.assertIsNone(payload["results"][0]["minimumMacOSMajor"], rel_path)
             self.assertIsNone(payload["results"][0]["availabilityNote"], rel_path)
+
+    def test_lookup_action_grounding_falls_back_to_parameter_catalog(self) -> None:
+        for rel_path in self.LOOKUP_SCRIPTS:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / rel_path),
+                    "--identifier",
+                    "com.apple.MobileSMS.SendMessageIntent",
+                    "--target-macos",
+                    "27",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            entry = payload["results"][0]
+            self.assertEqual("com.apple.MobileSMS.SendMessageIntent", entry["identifier"], rel_path)
+            self.assertEqual("toolkit-parameter-summary", entry["status"], rel_path)
+            self.assertEqual("appIntent", entry["toolkitToolType"], rel_path)
+            self.assertIn("macOS 27", entry["toolkitPlatforms"], rel_path)
+            self.assertIn("iOS 27 Simulator", entry["toolkitPlatforms"], rel_path)
+            parameter_keys = {
+                parameter["key"]
+                for parameter in entry["toolkitParameterSummary"]["parameters"]
+            }
+            self.assertIn("destination", parameter_keys, rel_path)
+            self.assertIn("content", parameter_keys, rel_path)
+            self.assertIn("scheduledDate", parameter_keys, rel_path)
 
 
 class OS27AutomatorsReferenceTests(unittest.TestCase):
