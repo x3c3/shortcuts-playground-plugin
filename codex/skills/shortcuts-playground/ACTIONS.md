@@ -42,7 +42,7 @@ Some actions have non-standard mappings:
 
 ### OS 27 ToolKit v78 Additions
 
-These classic/WF-namespace identifiers are present in local OS 27 ToolKit v78 databases. They are allowlisted for validation only when targeting OS 27+ or `latest`. `Add Item to List` serialization is verified from Federico's macOS 27 sample; the remaining new actions still need dedicated authoring samples before relying on exact parameter structure.
+These classic/WF-namespace identifiers are present in local OS 27 ToolKit v78 databases. They are allowlisted for validation only when targeting OS 27+ or `latest`. `Add Item to List` serialization is verified from Federico's macOS 27 sample; Stored Content, Get What's On Screen, and VPN fields have targeted ToolKit-derived validation. Picker-backed values such as VPN selection and iOS workout type/goal payloads still need exported samples before relying on rich generated payloads.
 
 | Identifier | Display Name | Observed Parameter Keys |
 |------------|--------------|-------------------------|
@@ -55,6 +55,9 @@ These classic/WF-namespace identifiers are present in local OS 27 ToolKit v78 da
 | `is.workflow.actions.getstoredcontent` | Get Stored Content | `WFStoredContentGlobalValue`, `WFStoredContentKey` |
 | `is.workflow.actions.setstoredcontent` | Store Content | `WFInput`, `WFStoredContentGlobalValue`, `WFStoredContentKey` |
 | `is.workflow.actions.vpn.get` | Get Current VPN | none |
+| `is.workflow.actions.vpn.set` | Set VPN | `WFVPNOperation`, `WFOnDemandValue`, `WFVPN` |
+| `is.workflow.actions.workout.end` | End Workout | `IntentAppDefinition` (iOS/iPadOS 27 only) |
+| `is.workflow.actions.workout.start` | Start Workout | `IntentAppDefinition`, `workoutName`, `isOpenEnded`, `WorkoutGoal` (iOS/iPadOS 27 only) |
 
 #### Add Item to List
 
@@ -68,29 +71,95 @@ These classic/WF-namespace identifiers are present in local OS 27 ToolKit v78 da
 
 `WFListVariable` is a `WFTextTokenAttachment` pointing at a list output or named variable. `WFListItem` can be a literal value or `WFTextTokenString`.
 
+`WFInsertPosition` accepts exactly `Beginning`, `End`, or `Index`. Include `WFItemIndex` only when `WFInsertPosition = "Index"`, and use a 1-based integer (`1` or greater).
+
+#### Stored Content
+
+`Store Content`, `Get Stored Content`, and `Delete Stored Content` share a string key in `WFStoredContentKey`. The key must be non-empty. `WFStoredContentGlobalValue` is a boolean; omit it or set it to `false` for shortcut-scoped content, and set it to `true` only when intentionally using the global/iCloud stored-content namespace. This boolean is unrelated to editor rendering; it does not fix an empty `Content` field.
+
+`Store Content` also requires explicit `WFInput` pointing at the content to save. Apple saves a manually connected Store Content input as `WFTextTokenString` with a single `￼` placeholder and an `attachmentsByRange` entry for the source output. Do **not** use a bare `WFTextTokenAttachment` or a wrapped `Type = Variable` attachment for this field; those sign and import, but render as an empty `Content` placeholder in Shortcuts. If `shortcuts sign` rejects this correct XML shape with a format error, use `plutil -convert binary1` on the final `.shortcut` copy and sign that; the bundled signer wrapper retries this automatically.
+
+| Action | Required Parameters |
+|--------|---------------------|
+| `is.workflow.actions.setstoredcontent` | `WFInput`, `WFStoredContentKey` |
+| `is.workflow.actions.getstoredcontent` | `WFStoredContentKey` |
+| `is.workflow.actions.deletestoredcontent` | `WFStoredContentKey` |
+
+#### VPN Actions
+
+`is.workflow.actions.vpn.get` returns the current VPN and takes no parameters. Prefer this classic WF action for "Get Current VPN" output. The similarly named AppIntent entity row `com.apple.systempreferences.CurrentlyConnectedVPN` is filter/query metadata, not the no-parameter current-VPN action. `is.workflow.actions.filter.vpns` and `is.workflow.actions.vpn.set` are OS 27 ToolKit v78 rows available on macOS and iOS/iPadOS targets.
+
+For `Find VPNs`, ToolKit exposes VPN content item properties `Name`, `Server Address`, `App`, `Is Connected`, and `Is On Demand Enabled`. The verified sort properties are `Name`, `Server Address`, and `Random`. Prefer ToolKit enum IDs for `WFCompoundType`: `0` means **Any** and `1` means **All**. The validator accepts the display labels `Any`/`All` as compatibility aliases, but generated shortcuts should use `0`/`1`. If `WFContentItemLimitEnabled` is `true`, include a positive numeric `WFContentItemLimitNumber`.
+
+| Action | Required/Important Parameters |
+|--------|-------------------------------|
+| `is.workflow.actions.filter.vpns` | `WFContentItemFilter` for predicates, optional `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter = "Library"` |
+| `is.workflow.actions.vpn.get` | none |
+| `is.workflow.actions.vpn.set` | `WFVPNOperation`, `WFVPN`; `WFOnDemandValue` is required when `WFVPNOperation = "Set On Demand"` |
+
+`WFVPNOperation` accepts exactly `Connect`, `Disconnect`, `Toggle`, `Set On Demand`, or `Toggle On Demand`. `WFOnDemandValue`, when present, must be a boolean. Treat `WFVPN` as a picker/token state for the selected VPN configuration; do not leave it empty.
+
+#### iOS Workout Controls
+
+`is.workflow.actions.workout.start` and `is.workflow.actions.workout.end` are present only in the iOS/iPadOS 27 Simulator ToolKit snapshot. Validate them with `--target-platform ios`; the default macOS target intentionally rejects them. Treat the listed ToolKit keys as metadata until an exported iPhone/iPad shortcut confirms picker value serialization for `workoutName` and `WorkoutGoal`.
+
+#### Get What's On Screen
+
+Use the OS 27 ToolKit v78 parameterized row `is.workflow.actions.getonscreencontext` for new shortcuts. `is.workflow.actions.getonscreencontent` is still present in the ToolKit snapshot but is deprecated by v78 and has no observed parameter schema in the current catalog.
+
+| Parameter | Requirement |
+|-----------|-------------|
+| `WFOnScreenContextScope` | Optional. If present, use exactly `All Visible` or `Focused App Only`. |
+| `WFOnScreenContextResultType` | Optional string. Leave omitted unless matching an exported sample or a known Shortcuts UI value. |
+| `WFOnScreenContextLimitEnabled` | Optional boolean. Use `true` only when intentionally limiting the number of returned items. |
+| `WFOnScreenContextLimit` | Required when `WFOnScreenContextLimitEnabled` is `true`; must be a positive number. Omit when limit is disabled. |
+
 #### OS 26 to 27 Updated Parameters
 
 These parameter additions were cross-checked against the Automators OS 26 to 27 thread and local ToolKit v78 metadata. Treat AppIntent-style WF-namespace actions (`appendnote`, `scanbarcode`, `extracttextfromimage`) as ToolKit-backed AppIntents even though their identifiers begin with `is.workflow.actions.`. The validator rejects these parameter keys when targeting macOS 26 or older even if the action identifier itself is available on that target.
 
 | Identifier | Display Name | New/Updated Parameters | Notes |
 |------------|--------------|------------------------|-------|
-| `is.workflow.actions.appendnote` | Append to Note | `section`, `ignoreWhitespace`, `interpretAsMarkdown` | `section` is the section title/heading; the booleans are `On`/`Off` UI toggles. |
-| `com.apple.mobilenotes.SharingExtension` | Create Note | `interpretAsMarkdown` | This ToolKit row uses `contents` for the note body; `com.apple.Notes.CreateNoteIntent` did not expose the markdown toggle in local macOS 27 v78. |
-| `is.workflow.actions.askllm` | Use Broad World Knowledge | `WFAllowWebSearch` | Boolean toggle for web-backed model knowledge. |
-| `is.workflow.actions.getdistance` | Get Distance | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Direct`. |
-| `is.workflow.actions.gettraveltime` | Get Travel Time | `WFAvoidTolls`, `WFAvoidHighways` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Transit`. |
+| `is.workflow.actions.addnewreminder` | New Reminder | `WFUrgent` | Boolean urgent flag reported in the OS 26.4 delta and present in ToolKit v78. |
+| `is.workflow.actions.appendnote` | Append to Note | `section` (**Section**), `ignoreWhitespace` (**Ignore Whitespace**), `interpretAsMarkdown` (**Interpret as Markdown**); important existing key: `operation` | `section` is the section title/heading; `operation` accepts `append` or `prepend`; the booleans are `On`/`Off` UI toggles. |
+| `com.apple.mobilenotes.SharingExtension` | Create Note | `interpretAsMarkdown` (**Interpret as Markdown**) | This ToolKit row uses `contents` for the note body; `com.apple.Notes.CreateNoteIntent` did not expose the markdown toggle in local macOS 27 v78. |
+| `is.workflow.actions.askllm` | Use Model | `WFAllowWebSearch`, `FollowUp` | `WFAllowWebSearch` is the **Use Broad World Knowledge** toggle; `FollowUp` is the **Follow Up** toggle. Both are plist booleans. |
+| `is.workflow.actions.searchlocalbusinesses` | Find Places | `WFSearchSortOrder` | ToolKit enum values: `Distance` or `Relevance`. |
+| `is.workflow.actions.getdirections` | Open Directions | `WFDestination` | ToolKit notes that multi-stop trips are only supported by Apple Maps; exported multi-stop samples are still needed before generating complex destination lists. |
+| `is.workflow.actions.getdistance` | Get Distance | `WFAvoidTolls` (**Avoid Tolls**), `WFAvoidHighways` (**Avoid Highways**), `WFDistanceUnit`, `Accuracy` | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Direct`. Distance units: `Miles` or `Kilometers`. Accuracy values: `Best`, `NearestTenMeters`, `HundredMeters`, `Kilometer`, `ThreeKilometers`. |
+| `is.workflow.actions.gettraveltime` | Get Travel Time | `WFAvoidTolls` (**Avoid Tolls**), `WFAvoidHighways` (**Avoid Highways**) | Boolean route options. Route modes: `Driving`, `Walking`, `Biking`, `Transit`. |
 | `is.workflow.actions.hide.app` | Hide App | `WFAppsExcept` | Used when `WFHideAppMode = "All Apps"` to keep listed apps open. |
-| `is.workflow.actions.quit.app` | Quit App | `WFAppsExcept` | Used when `WFQuitAppMode = "All Apps"` to keep listed apps open. |
+| `is.workflow.actions.quit.app` | Quit App | `WFAppsExcept`, `WFAskToSaveChanges` | `WFAppsExcept` is used when `WFQuitAppMode = "All Apps"` to keep listed apps open. `WFAskToSaveChanges`, when present, must be a boolean. |
 | `is.workflow.actions.scanbarcode` | Scan QR or Barcode | `imageFile` | ToolKit-backed AppIntent parameter displayed as **Image** for scanning an input image file. |
 | `is.workflow.actions.extracttextfromimage` | Extract from Image | `imageFile` | ToolKit v78 exposes this as the primary image input. Older exported shortcuts may still use `WFImage` or `WFInput`. |
-| `com.apple.Safari.CreateNewTabGroup` | Create Tab Group | `contents` | Accepts URLs or existing Safari tab entities to seed the new tab group. |
+| `com.apple.Safari.CreateNewTabGroup` / `com.apple.mobilesafari.CreateNewTabGroup` | Create Tab Group | `contents` | Use `com.apple.Safari.*` on macOS and `com.apple.mobilesafari.*` on iOS/iPadOS. Accepts URLs or existing Safari tab entities to seed the new tab group. |
+
+OS 27 boolean toggles must be real plist booleans, not strings: `ignoreWhitespace`, `interpretAsMarkdown`, `WFAllowWebSearch`, `FollowUp`, `WFAvoidTolls`, and `WFAvoidHighways`. `WFGetDirectionsActionMode` accepts `Driving`, `Walking`, `Biking`, or `Direct` for Get Distance, and `Driving`, `Walking`, `Biking`, or `Transit` for Get Travel Time. `WFDistanceUnit` accepts `Miles` or `Kilometers`; `Accuracy` accepts `Best`, `NearestTenMeters`, `HundredMeters`, `Kilometer`, or `ThreeKilometers`. For Hide/Quit App, `WFHideAppMode` / `WFQuitAppMode` accept `App` or `All Apps`; `WFApp` is required when the mode is `App`, `WFAppsExcept` should be omitted unless it contains at least one app to keep open, and `WFAskToSaveChanges` must be boolean when present. `Scan QR or Barcode` requires `imageFile` as a non-empty token attachment to an image/file output. `Create Tab Group` `contents` must be omitted or non-empty.
 
 #### OS 26 to 27 Display Name Changes
 
 | Identifier | Old Name | New Name |
 |------------|----------|----------|
 | `is.workflow.actions.extracttextfromimage` | Extract Text from Image | Extract from Image (`imageFile` in ToolKit v78) |
+| `com.apple.Photos.PhotosSearchAssistantIntent` | Search Photos | Search |
 | `com.apple.TVRemoteUIService.ToggleSystemAppearanceIntent` | Set Light/Dark Mode | Set Appearance on Apple TV |
+
+#### OS 26.4 Choose from List Compatibility
+
+The linked Automators OS 26.2 to 26.4 delta notes that **Choose from List** works again with more input types, including dictionaries and named text. Prefer direct Dictionary/List/Text inputs over vCard/VCF workarounds unless the user explicitly asks for contact-card formatting. Contact email and phone-number list values remain macOS-only in the reported behavior.
+
+`WFChooseFromListActionSelectMultiple` and `WFChooseFromListActionSelectAll` must be plist booleans. Only set **Select All Initially** when **Select Multiple** is also enabled.
+
+#### OS 18 to 26.1 Automators Follow-up
+
+The earlier Automators iOS 18 to OS 26.1 thread lists a few rows that are also visible in the local ToolKit v78 metadata. Treat these as OS 27-era authoring metadata in this package unless you have an exported shortcut from the older OS that proves the same plist shape.
+
+| Action | Identifier | Confirmed Metadata |
+|--------|------------|--------------------|
+| Open App | `is.workflow.actions.openapp` | New `WFWindowingFormat` parameter for **Window Location & Size**. Valid values: `Full Screen`, `Left`, `Right`, `Top`, `Bottom`, `Top Leading`, `Top Trailing`, `Bottom Leading`, `Bottom Trailing`, `Left Third`, `Middle Third`, `Right Third`. |
+| Search in Files (iOS) | unresolved | The thread describes "Search for a file or folder", but no literal `Search in Files` row appears in the local macOS 27 or hydrated iOS 27 Simulator v78 ToolKit databases. The closest current classic row is `is.workflow.actions.filter.files` (`Filter Files`) with `WFContentItemFilter`, sort, limit, compound, and file input parameters. Do not invent a separate Search in Files payload until an exported iPhone/iPad shortcut identifies it. |
+
+`WFWindowingFormat` is optional. If present, it must use one of the exact ToolKit enum values above; typoed values now fail validation.
 
 ### Text & Input
 

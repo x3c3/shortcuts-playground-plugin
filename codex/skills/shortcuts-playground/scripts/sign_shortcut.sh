@@ -89,25 +89,50 @@ TIME_STAMP="$(date +%H%M%S)"
 ARCHIVE_DIR="$OUTPUT_DIR/$DATE_STAMP"
 ARCHIVE_FILE="$ARCHIVE_DIR/${NAME}-${TIME_STAMP}.xml"
 SIGNED_PATH="$OUTPUT_DIR/${NAME}.shortcut"
+# Golden Gate's shortcuts signer can reject otherwise valid plist inputs when
+# the temporary filename has no relationship to the shortcut name. Preserve the
+# requested shortcut stem in temp names, matching the Python stress-test signer.
+TMP_SIGN_INPUT="$OUTPUT_DIR/${NAME}-sign-input-$$.shortcut"
+TMP_SIGN_OUTPUT="$OUTPUT_DIR/${NAME}-sign-output-$$.shortcut"
+
+cleanup() {
+  rm -f "$TMP_SIGN_INPUT" "$TMP_SIGN_OUTPUT"
+}
+trap cleanup EXIT
 
 mkdir -p "$ARCHIVE_DIR" "$OUTPUT_DIR"
 cp "$INPUT" "$ARCHIVE_FILE"
-cp "$INPUT" "$SIGNED_PATH"
+cp "$INPUT" "$TMP_SIGN_INPUT"
 
 set +e
-SIGN_OUTPUT="$(shortcuts sign --mode "$MODE" --input "$SIGNED_PATH" --output "$SIGNED_PATH" 2>&1)"
+shortcuts sign --mode "$MODE" --input "$TMP_SIGN_INPUT" --output "$TMP_SIGN_OUTPUT"
 SIGN_STATUS=$?
 set -e
-if [ "$SIGN_STATUS" -ne 0 ]; then
-  if [ -n "$SIGN_OUTPUT" ]; then
-    printf '%s\n' "$SIGN_OUTPUT" >&2
+if [ "$SIGN_STATUS" -eq 0 ]; then
+  mv "$TMP_SIGN_OUTPUT" "$SIGNED_PATH"
+else
+  cp "$ARCHIVE_FILE" "$TMP_SIGN_INPUT"
+  rm -f "$TMP_SIGN_OUTPUT"
+  if plutil -lint "$TMP_SIGN_INPUT" >/dev/null 2>&1; then
+    printf '\nshortcuts-playground: Apple shortcuts sign failed; retrying after binary plist conversion.\n' >&2
+    if plutil -convert binary1 "$TMP_SIGN_INPUT" >/dev/null 2>&1; then
+      set +e
+      shortcuts sign --mode "$MODE" --input "$TMP_SIGN_INPUT" --output "$TMP_SIGN_OUTPUT"
+      SIGN_STATUS_BINARY=$?
+      set -e
+      if [ "$SIGN_STATUS_BINARY" -eq 0 ]; then
+        mv "$TMP_SIGN_OUTPUT" "$SIGNED_PATH"
+        SIGN_STATUS=0
+      else
+        printf '\nshortcuts-playground: Apple shortcuts sign failed even after binary plist conversion. If validate_shortcut.py and plutil -lint both pass, retry outside Codex workspace-write sandbox restrictions or with Codex filesystem sandboxing set to full access before treating the plist as malformed.\n' >&2
+        exit "$SIGN_STATUS_BINARY"
+      fi
+    fi
   fi
-  case "$SIGN_OUTPUT" in
-    *"isn't in the correct format"*|*"isn’t in the correct format"*)
-      printf '\nshortcuts-playground: Apple shortcuts sign reported a format error. If validate_shortcut.py and plutil -lint both pass, this can be caused by Codex workspace-write sandbox restrictions rather than malformed XML. Retry signing outside the restricted sandbox or with Codex filesystem sandboxing set to full access.\n' >&2
-      ;;
-  esac
-  exit "$SIGN_STATUS"
+  if [ "$SIGN_STATUS" -ne 0 ]; then
+    printf '\nshortcuts-playground: Apple shortcuts sign failed. If validate_shortcut.py and plutil -lint both pass, retry outside Codex workspace-write sandbox restrictions or with Codex filesystem sandboxing set to full access before treating the plist as malformed.\n' >&2
+    exit "$SIGN_STATUS"
+  fi
 fi
 
 printf '{"archive":"%s","signed":"%s","mode":"%s"}\n' "$ARCHIVE_FILE" "$SIGNED_PATH" "$MODE"

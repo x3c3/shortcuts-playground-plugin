@@ -1,6 +1,6 @@
 {
   "name": "shortcuts-playground",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Build, validate, sign, archive, and remix macOS/iOS Shortcuts from Codex using a bundled Shortcuts plist knowledge base and validator.",
   "author": {
     "name": "Federico Viticci",
@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Shortcuts Playground",
     "shortDescription": "Build and validate Apple Shortcuts",
-    "longDescription": "Create, remix, validate, archive, and sign macOS/iOS Shortcuts plist XML from Codex. Includes ToolKit v63 action metadata, target-gated macOS 27 ToolKit v78 coverage, reviewed static Apple-derived macOS 27 grounding metadata, HealthKit syntax, golden XML examples, icon/color resolution, and validator scripts.",
+    "longDescription": "Create, remix, validate, archive, and sign macOS/iOS Shortcuts plist XML from Codex. Includes ToolKit v63 action metadata, target-gated macOS/iOS 27 ToolKit v78 coverage, reviewed static Apple-derived OS 27 grounding, parameter, enum, and trigger metadata, HealthKit syntax, golden XML examples, icon/color resolution, and validator scripts.",
     "developerName": "Federico Viticci",
     "category": "Productivity",
     "capabilities": [

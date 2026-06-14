@@ -27,7 +27,7 @@ sign-shortcut /path/to/Shortcut.xml --name "Shortcut Name"
 
 `sign-shortcut` defaults to `CLAUDE_PLUGIN_OPTION_OUTPUT_DIR` or `~/Documents/Shortcuts Playground`, and `CLAUDE_PLUGIN_OPTION_SIGNING_MODE` or `anyone`.
 
-If `shortcuts sign` reports that a validator-clean plist "isn't in the correct format", retry outside Codex `workspace-write` sandbox restrictions before assuming the XML is malformed.
+If `shortcuts sign` reports that a validator-clean plist "isn't in the correct format", use the bundled signer wrapper or retry after binary plist conversion before assuming the XML is malformed. If XML and binary signing both fail, retry from an unrestricted shell and check filesystem permissions.
 
 ## What's Included
 
@@ -35,12 +35,13 @@ If `shortcuts sign` reports that a validator-clean plist "isn't in the correct f
 |------|-------------|
 | [SKILL.md](SKILL.md) | Skill definition with Claude Code workflow rules |
 | [ACTIONS.md](ACTIONS.md) | WF*Action identifiers and parameters |
-| [APPINTENTS.md](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups, with v78 IDs allowlisted separately) |
+| [APPINTENTS.md](APPINTENTS.md) | AppIntent actions (ToolKit v63 base coverage plus target-gated v78 identifiers, parameters, enum values, and research notes) |
 | [PARAMETER_TYPES.md](PARAMETER_TYPES.md) | Parameter value types and serialization formats |
 | [PLIST_FORMAT.md](PLIST_FORMAT.md) | Complete plist structure |
 | [BEST_PRACTICES.md](BEST_PRACTICES.md) | Mandatory generation guidelines |
 | [HEALTHKIT.md](HEALTHKIT.md) | HealthKit action schemas and examples |
 | [CONTROL_FLOW.md](CONTROL_FLOW.md) | Repeat, conditional, and menu patterns |
+| [AUTOMATION_TRIGGERS.md](AUTOMATION_TRIGGERS.md) | OS 27 ToolKit automation trigger metadata for research/sample requests |
 | [FILTERS.md](FILTERS.md) | Filter action predicates |
 | [VARIABLES.md](VARIABLES.md) | Variable reference patterns |
 | [ICONS_AND_COLORS.md](ICONS_AND_COLORS.md) | Icon glyph and color selection |
@@ -58,6 +59,9 @@ If `shortcuts sign` reports that a validator-clean plist "isn't in the correct f
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
 | `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
 | `data/toolkit-v78-ios27-tool-ids.json` | Bundled iOS 27 Simulator ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/toolkit-v78-first-party-parameter-keys.json` | Target-gated OS 27 first-party parameter-key/name/type catalog for AppIntent schema checks |
+| `data/toolkit-v78-first-party-enum-cases.json` | Static OS 27 enum-case catalog for ToolKit action and trigger parameter type names |
+| `data/toolkit-v78-trigger-parameter-keys.json` | OS 27 ToolKit automation trigger IDs, Python names, parameter keys, and output types |
 | `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 

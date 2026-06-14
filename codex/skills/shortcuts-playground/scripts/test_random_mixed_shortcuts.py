@@ -14,13 +14,25 @@ import json
 import os
 import plistlib
 import random
+import shutil
 import subprocess
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from validate_shortcut import load_allowed_ids, load_icon_metadata, validate
+from validate_shortcut import (
+    load_allowed_ids,
+    load_future_parameter_key_reasons,
+    load_future_toolkit_id_reasons,
+    load_icon_metadata,
+    load_toolkit_parameter_boolean_keys,
+    load_toolkit_parameter_enum_cases,
+    load_toolkit_parameter_schemas,
+    resolve_target_macos_major,
+    resolve_target_platform,
+    validate,
+)
 
 PLACEHOLDER = "\uFFFC"
 
@@ -68,6 +80,13 @@ def action_output(output_uuid: str, output_name: str) -> dict[str, Any]:
             "OutputUUID": output_uuid,
             "OutputName": output_name,
         },
+    }
+
+
+def variable_wrapper_action_output(output_uuid: str, output_name: str) -> dict[str, Any]:
+    return {
+        "Type": "Variable",
+        "Variable": action_output(output_uuid, output_name),
     }
 
 
@@ -131,7 +150,223 @@ def make_workflow(name: str, actions: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def build_case(case_name: str, idx: int, rng: random.Random) -> BuildResult:
+def append_os27_actions(
+    actions: list[dict[str, Any]],
+    case_name: str,
+    idx: int,
+    uid,
+) -> list[str]:
+    extras_used = ["os27.actions"]
+
+    os27_text_uuid = uid("os27-text")
+    os27_key_uuid = uid("os27-key")
+    os27_list_uuid = uid("os27-list")
+    os27_added_uuid = uid("os27-add-item")
+    os27_stored_uuid = uid("os27-stored-get")
+    os27_group_uuid = uid("os27-otherwise-if-group")
+    os27_selected_uuid = uid("os27-selected-text")
+    os27_screen_uuid = uid("os27-on-screen")
+    os27_find_vpns_uuid = uid("os27-find-vpns")
+    os27_vpn_uuid = uid("os27-current-vpn")
+
+    conditional_input = variable_wrapper_action_output(os27_added_uuid, "List")
+    actions.extend(
+        [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+                "WFWorkflowActionParameters": {
+                    "WFCommentActionText": (
+                        "OS 27 module: Add Item to List, Stored Content, "
+                        "Otherwise If, selected text, on-screen context, and VPN."
+                    )
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_text_uuid,
+                    "WFTextActionText": f"{case_name} OS 27 stored value",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_key_uuid,
+                    "WFTextActionText": f"sp27-random-{idx:03d}",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.setstoredcontent",
+                "WFWorkflowActionParameters": {
+                    "WFInput": token_string_action_output(os27_text_uuid, "Text"),
+                    "WFStoredContentKey": token_string_action_output(os27_key_uuid, "Text"),
+                    "WFStoredContentGlobalValue": False,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.getstoredcontent",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_stored_uuid,
+                    "WFStoredContentKey": f"sp27-random-{idx:03d}",
+                    "WFStoredContentGlobalValue": False,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.deletestoredcontent",
+                "WFWorkflowActionParameters": {
+                    "WFStoredContentKey": f"sp27-random-{idx:03d}",
+                    "WFStoredContentGlobalValue": False,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.list",
+                "WFWorkflowActionParameters": {"UUID": os27_list_uuid},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.additemtolist",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_added_uuid,
+                    "WFListItem": "Apple",
+                    "WFListVariable": action_output(os27_list_uuid, "List"),
+                    "WFInsertPosition": "End",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+                "WFWorkflowActionParameters": {
+                    "WFCommentActionText": (
+                        "- If checks the list created above for Apple\n"
+                        "- Otherwise If checks the same list for Orange"
+                    )
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+                "WFWorkflowActionParameters": {
+                    "GroupingIdentifier": os27_group_uuid,
+                    "WFControlFlowMode": 0,
+                    "WFCondition": 99,
+                    "WFInput": conditional_input,
+                    "WFConditionalActionString": "Apple",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+                "WFWorkflowActionParameters": {"UUID": uid("os27-if-apple-nothing")},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+                "WFWorkflowActionParameters": {
+                    "GroupingIdentifier": os27_group_uuid,
+                    "WFControlFlowMode": 1,
+                    "WFCondition": 99,
+                    "WFInput": conditional_input,
+                    "WFConditionalActionString": "Orange",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+                "WFWorkflowActionParameters": {"UUID": uid("os27-if-orange-nothing")},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+                "WFWorkflowActionParameters": {
+                    "GroupingIdentifier": os27_group_uuid,
+                    "WFControlFlowMode": 1,
+                    "WFInput": conditional_input,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+                "WFWorkflowActionParameters": {"UUID": uid("os27-if-else-nothing")},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+                "WFWorkflowActionParameters": {
+                    "GroupingIdentifier": os27_group_uuid,
+                    "WFControlFlowMode": 2,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.getselectedtext",
+                "WFWorkflowActionParameters": {"UUID": os27_selected_uuid},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.getonscreencontext",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_screen_uuid,
+                    "WFOnScreenContextScope": "Focused App Only",
+                    "WFOnScreenContextLimitEnabled": True,
+                    "WFOnScreenContextLimit": 3,
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.filter.vpns",
+                "WFWorkflowActionParameters": {
+                    "UUID": os27_find_vpns_uuid,
+                    "WFContentItemInputParameter": "Library",
+                    "WFContentItemSortProperty": "Server Address",
+                    "WFContentItemSortOrder": "A to Z",
+                    "WFContentItemLimitEnabled": True,
+                    "WFContentItemLimitNumber": 3,
+                    "WFCompoundType": "1",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.vpn.get",
+                "WFWorkflowActionParameters": {"UUID": os27_vpn_uuid},
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.showresult",
+                "WFWorkflowActionParameters": {
+                    "Text": token_string_from_parts(
+                        [
+                            "OS 27 stored content: ",
+                            {
+                                "Type": "ActionOutput",
+                                "OutputUUID": os27_stored_uuid,
+                                "OutputName": "Stored Content",
+                            },
+                            " / selected: ",
+                            {
+                                "Type": "ActionOutput",
+                                "OutputUUID": os27_selected_uuid,
+                                "OutputName": "Selected Text",
+                            },
+                            " / screen: ",
+                            {
+                                "Type": "ActionOutput",
+                                "OutputUUID": os27_screen_uuid,
+                                "OutputName": "On Screen Content",
+                            },
+                            " / vpns: ",
+                            {
+                                "Type": "ActionOutput",
+                                "OutputUUID": os27_find_vpns_uuid,
+                                "OutputName": "VPNs",
+                            },
+                            " / current vpn: ",
+                            {
+                                "Type": "ActionOutput",
+                                "OutputUUID": os27_vpn_uuid,
+                                "OutputName": "VPN",
+                            },
+                        ]
+                    )
+                },
+            },
+        ]
+    )
+    return extras_used
+
+
+def build_case(
+    case_name: str,
+    idx: int,
+    rng: random.Random,
+    *,
+    include_os27_actions: bool = False,
+) -> BuildResult:
     uid = lambda label: seeded_uuid(f"{case_name}-{label}")
     actions: list[dict[str, Any]] = []
 
@@ -362,8 +597,15 @@ def build_case(case_name: str, idx: int, rng: random.Random) -> BuildResult:
     num_uuid = uid("number")
     math_uuid = uid("math")
     round_uuid = uid("round")
-    math_op = rng.choice(["+", "-", "*", "/"])
+    math_op = rng.choice([None, "-", "×", "÷"])
     math_operand = rng.randint(2, 9)
+    math_params: dict[str, Any] = {
+        "UUID": math_uuid,
+        "WFMathOperand": str(math_operand),
+        "WFInput": action_output(num_uuid, "Number"),
+    }
+    if math_op is not None:
+        math_params["WFMathOperation"] = math_op
     actions.append(
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.number",
@@ -373,12 +615,7 @@ def build_case(case_name: str, idx: int, rng: random.Random) -> BuildResult:
     actions.append(
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.math",
-            "WFWorkflowActionParameters": {
-                "UUID": math_uuid,
-                "WFMathOperation": math_op,
-                "WFMathOperand": math_operand,
-                "WFInput": action_output(num_uuid, "Number"),
-            },
+            "WFWorkflowActionParameters": math_params,
         }
     )
     actions.append(
@@ -445,6 +682,9 @@ def build_case(case_name: str, idx: int, rng: random.Random) -> BuildResult:
                     },
                 }
             )
+
+    if include_os27_actions:
+        extras_used.extend(append_os27_actions(actions, case_name, idx, uid))
 
     # Final summary
     summary_uuid = uid("summary")
@@ -524,7 +764,7 @@ def write_shortcut(path: Path, workflow: dict[str, Any]) -> None:
     path.write_bytes(plistlib.dumps(workflow, fmt=plistlib.FMT_XML, sort_keys=False))
 
 
-def sign_shortcut(path: Path) -> tuple[int, str]:
+def _run_shortcuts_sign(input_path: Path, output_path: Path) -> tuple[int, str]:
     proc = subprocess.run(
         [
             "shortcuts",
@@ -532,15 +772,66 @@ def sign_shortcut(path: Path) -> tuple[int, str]:
             "--mode",
             "anyone",
             "--input",
-            str(path),
+            str(input_path),
             "--output",
-            str(path),
+            str(output_path),
         ],
         capture_output=True,
         text=True,
     )
     output = (proc.stdout or "").strip() + ("\n" + proc.stderr.strip() if proc.stderr else "")
     return proc.returncode, output.strip()
+
+
+def sign_shortcut(path: Path) -> tuple[int, str]:
+    # Apple's signer can reject hidden dotfile inputs with a misleading
+    # "not in the correct format" error, so keep temporary shortcut names visible.
+    tmp_input = path.with_name(f"{path.stem}-sign-input-{os.getpid()}.shortcut")
+    tmp_output = path.with_name(f"{path.stem}-sign-output-{os.getpid()}.shortcut")
+    try:
+        shutil.copy2(path, tmp_input)
+        rc, output = _run_shortcuts_sign(tmp_input, tmp_output)
+        if rc == 0:
+            shutil.move(str(tmp_output), path)
+            return 0, output
+
+        first_output = output
+        shutil.copy2(path, tmp_input)
+        tmp_output.unlink(missing_ok=True)
+        lint = subprocess.run(["plutil", "-lint", str(tmp_input)], capture_output=True, text=True)
+        if lint.returncode != 0:
+            lint_output = (lint.stdout or "").strip() + (
+                "\n" + lint.stderr.strip() if lint.stderr else ""
+            )
+            return rc, "\n".join(part for part in (first_output, lint_output.strip()) if part)
+
+        convert = subprocess.run(
+            ["plutil", "-convert", "binary1", str(tmp_input)],
+            capture_output=True,
+            text=True,
+        )
+        if convert.returncode != 0:
+            convert_output = (convert.stdout or "").strip() + (
+                "\n" + convert.stderr.strip() if convert.stderr else ""
+            )
+            return rc, "\n".join(part for part in (first_output, convert_output.strip()) if part)
+
+        rc_binary, output_binary = _run_shortcuts_sign(tmp_input, tmp_output)
+        if rc_binary == 0:
+            shutil.move(str(tmp_output), path)
+            return 0, "\n".join(
+                part
+                for part in (
+                    first_output,
+                    "Retried after binary plist conversion.",
+                    output_binary,
+                )
+                if part
+            )
+        return rc_binary, "\n".join(part for part in (first_output, output_binary) if part)
+    finally:
+        tmp_input.unlink(missing_ok=True)
+        tmp_output.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -553,7 +844,26 @@ def main() -> int:
     parser.add_argument("--max-attempts", type=int, default=20, help="Generation retries per shortcut")
     parser.add_argument("--output-dir", help="Override output directory")
     parser.add_argument("--sign", action="store_true", help="Sign generated shortcuts after validation")
+    parser.add_argument(
+        "--target-macos",
+        default="auto",
+        help="Validation target macOS major: auto, latest, 26, or 27",
+    )
+    parser.add_argument(
+        "--target-platform",
+        default="macos",
+        help="Validation target platform: macos, ios, ipad, iphone, or all",
+    )
+    parser.add_argument(
+        "--include-os27-actions",
+        action="store_true",
+        help="Include an explicit OS 27 action module in every generated shortcut",
+    )
     args = parser.parse_args()
+    target_macos_major = resolve_target_macos_major(args.target_macos)
+    target_platform = resolve_target_platform(args.target_platform)
+    if args.include_os27_actions and target_macos_major not in (27, None):
+        parser.error("--include-os27-actions requires --target-macos 27 or latest")
 
     runid = dt.datetime.now().strftime("%H%M%S")
     date_folder = dt.datetime.now().strftime("%Y-%m-%d")
@@ -571,8 +881,29 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     skill_dir = Path(__file__).resolve().parents[1]
-    allowed_ids = load_allowed_ids(skill_dir)
+    allowed_ids = load_allowed_ids(skill_dir, target_macos_major, target_platform)
     allowed_glyph_ids, allowed_icon_colors = load_icon_metadata(skill_dir)
+    unavailable_ids = load_future_toolkit_id_reasons(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
+    unavailable_parameter_keys = load_future_parameter_key_reasons(target_macos_major)
+    toolkit_parameter_schemas = load_toolkit_parameter_schemas(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
+    toolkit_parameter_enum_cases = load_toolkit_parameter_enum_cases(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
+    toolkit_parameter_boolean_keys = load_toolkit_parameter_boolean_keys(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
 
     results: list[dict[str, Any]] = []
     manifest: list[dict[str, Any]] = []
@@ -581,7 +912,8 @@ def main() -> int:
     failed_cases = 0
 
     for idx in range(1, args.count + 1):
-        case_name = f"ZZ-RAND26-{runid}-{idx:03d}"
+        case_prefix = "ZZ-RAND27" if args.include_os27_actions else "ZZ-RAND26"
+        case_name = f"{case_prefix}-{runid}-{idx:03d}"
         case_path = out_dir / f"{case_name}.shortcut"
         case_record: dict[str, Any] = {
             "index": idx,
@@ -594,7 +926,12 @@ def main() -> int:
         passed: Optional[BuildResult] = None
         for attempt in range(1, args.max_attempts + 1):
             rng = random.Random(args.seed + idx * 1000 + attempt)
-            built = build_case(case_name, idx, rng)
+            built = build_case(
+                case_name,
+                idx,
+                rng,
+                include_os27_actions=args.include_os27_actions,
+            )
 
             if built.distinct_actions < args.min_actions:
                 case_record["attempts"].append(
@@ -609,7 +946,15 @@ def main() -> int:
                 continue
 
             errors, _ = validate(
-                built.workflow, allowed_ids, allowed_glyph_ids, allowed_icon_colors
+                built.workflow,
+                allowed_ids,
+                allowed_glyph_ids,
+                allowed_icon_colors,
+                unavailable_ids=unavailable_ids,
+                unavailable_parameter_keys=unavailable_parameter_keys,
+                toolkit_parameter_schemas=toolkit_parameter_schemas,
+                toolkit_parameter_enum_cases=toolkit_parameter_enum_cases,
+                toolkit_parameter_boolean_keys=toolkit_parameter_boolean_keys,
             )
             case_record["attempts"].append(
                 {
@@ -675,6 +1020,9 @@ def main() -> int:
         f"- Passed cases: {passed_cases}",
         f"- Failed cases: {failed_cases}",
         f"- Minimum distinct actions target: {args.min_actions}",
+        f"- Target macOS: {args.target_macos}",
+        f"- Target platform: {args.target_platform}",
+        f"- OS 27 action module: {'enabled' if args.include_os27_actions else 'disabled'}",
         f"- Total generation attempts: {total_attempts}",
         f"- Cases requiring retries: {retried_cases}",
     ]

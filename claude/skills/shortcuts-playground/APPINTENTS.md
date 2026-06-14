@@ -4,7 +4,7 @@ Complete catalog of all 1632 first-party AppIntent actions from macOS ToolKit v6
 
 OS 27 ToolKit v78 snapshots add more AppIntent, Siri intent, and flow-tool identifiers to the packaged validator allowlist. Those v78 identifiers are validation coverage only unless their schemas are documented here, in another reference file, or in a golden/exported XML sample.
 
-The packaged `data/toolkit-v78-first-party-parameter-keys.json` file adds a broader **parameter-key coverage tier** for OS 27 exploration: 2,585 first-party `com.apple.*` and `is.workflow.actions.*` ToolKit rows from local macOS 27 and iOS 27 Simulator databases, with platform labels, Python names, tool types, parameter keys, and type names. It intentionally omits Apple descriptions and does not prove that an action is authoring-safe. `scripts/lookup_action_grounding.py` uses this snapshot as a fallback when an action is allowlisted but absent from the curated Shortpy grounding catalog. It emits separate notes for action availability, OS 27-era parameter metadata, and one-sided platform provenance when a row was observed only in macOS 27 or only in the iOS 27 Simulator ToolKit.
+The packaged `data/toolkit-v78-first-party-parameter-keys.json` file adds a broader **parameter-key coverage tier** for OS 27 exploration: 2,585 first-party `com.apple.*` and `is.workflow.actions.*` ToolKit rows from local macOS 27 and iOS 27 Simulator databases, with platform labels, Python names, tool types, parameter keys, localized parameter names, sort order, flags, boolean labels, type names, and per-parameter platform provenance. `data/toolkit-v78-first-party-enum-cases.json` adds concrete enum cases for the referenced action and automation-trigger parameter type names. Both files intentionally omit Apple descriptions and do not prove that an action is authoring-safe. `scripts/lookup_action_grounding.py` uses these snapshots as fallbacks when an action is allowlisted but absent from the curated Shortpy grounding catalog. It emits separate notes for action availability, OS 27-era parameter metadata, enum cases, one-sided action provenance, and target-filtered parameter summaries when individual fields exist only on macOS 27 or only in the iOS 27 Simulator ToolKit.
 
 ## AppIntents vs WF*Actions
 
@@ -43,31 +43,40 @@ These entries document authoring metadata. They do not prove runtime availabilit
 
 | Display Name | Identifier | Source | Observed Parameters |
 |--------------|------------|--------|---------------------|
-| Share and Collaborate | `com.apple.sociallayerd.CollaborationIntent` | macOS 27 v78 | `recipients` |
+| Set Battery Charge Limit | `com.apple.ShortcutsActions.SetBatteryChargeLimitAction` | macOS 27 v78 + iOS 27 Simulator v78 | `limit`, `setUntilTomorrow`; Automators reports this was added in OS 26.4. |
+| Get Multitasking Mode | `com.apple.ShortcutsActions.GetMultitaskingModeAction` | macOS 27 v78 + iOS 27 Simulator v78 | none; Automators reports this was added in OS 26.4. |
+| Set Multitasking Mode | `com.apple.ShortcutsActions.SetMultitaskingModeAction` | macOS 27 v78 + iOS 27 Simulator v78 | `mode`, `automaticallyShowAndHideDock`, `showRecentApps`; mode cases are `fullScreenApps`, `stageManager`, `windowedApps`. |
+| Share and Collaborate | `com.apple.sociallayerd.CollaborationIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `recipients` |
 | Share | `com.apple.SharingUIService.ShareIntent` | iOS 27 Simulator v78 | `shareTransport`, `recipients`, `mode`, `content` |
 | Create Note | `com.apple.mobilenotes.SharingExtension` | macOS 27 v78 | `name`, `contents`, `folder`, `interpretAsMarkdown`, `OpenWhenRun` |
-| Create Tab Group | `com.apple.Safari.CreateNewTabGroup` | macOS 27 v78 | `contents`, `name`; `contents` accepts URLs or Safari tab entities |
-| Open Inbox | `com.apple.MobileSMS.ChangeFilterModeIntent` | macOS 27 v78 | `filterMode` |
-| Delete Conversations | `com.apple.MobileSMS.DeleteConversationIntent` | macOS 27 v78 | `entities` |
-| Delete Messages | `com.apple.MobileSMS.DeleteMessageIntent` | macOS 27 v78 | `entities`, `WFLinkMessagesEntityVariablePickerKey` |
-| Mark as Read | `com.apple.MobileSMS.MarkConversationAsUnreadIntent` | macOS 27 v78 | `operation`, `conversation`, `unreadState`, `OpenWhenRun` |
-| Search in Messages | `com.apple.MobileSMS.SearchMessagesIntent` | macOS 27 v78 | `criteria` |
-| Send Tapback | `com.apple.MobileSMS.SendMessageReactionIntent` | macOS 27 v78 | `message`, `reaction`, `WFLinkMessagesEntityVariablePickerKey` |
-| Find Message (Messages) | `com.apple.MobileSMS.MessageEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
-| Find Album | `com.apple.Photos.AlbumEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
-| Auto Enhance Photo | `com.apple.Photos.EnhanceIntent` | macOS 27 v78 | `assets`, `enabled` |
-| Favorite Photos | `com.apple.Photos.FavoriteAssetsIntent` | macOS 27 v78 | `assets`, `action` |
-| Open Photo | `com.apple.Photos.OpenAssetIntent` | macOS 27 v78 | `target` |
-| Hide Photos | `com.apple.Photos.HideAssetsIntent` | macOS 27 v78 | `assets`, `action` |
-| Delete Albums | `com.apple.Photos.DeleteAlbumsIntent` | macOS 27 v78 | `entities` |
-| Delete Albums | `com.apple.Photos.PhotosDeleteAlbumsAssistantIntent` | macOS 27 v78 | `entities` |
-| Find Message (Mail) | `com.apple.mail.MailMessageEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Create Tab Group | `com.apple.Safari.CreateNewTabGroup` / `com.apple.mobilesafari.CreateNewTabGroup` | macOS 27 v78 + iOS 27 Simulator v78 | `contents`, `name`; `contents` accepts URLs or Safari tab entities |
+| Set Appearance on Apple TV | `com.apple.TVRemoteUIService.ToggleSystemAppearanceIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `device`, `appearanceToggle`, `ShowWhenRun`; `appearanceToggle` cases are `light` and `dark`. Renamed from **Set Light/Dark Mode**. |
+| Open Inbox | `com.apple.MobileSMS.ChangeFilterModeIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `filterMode` |
+| Delete Conversations | `com.apple.MobileSMS.DeleteConversationIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `entities` |
+| Delete Messages | `com.apple.MobileSMS.DeleteMessageIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `entities`, `WFLinkMessagesEntityVariablePickerKey` |
+| Mark as Read | `com.apple.MobileSMS.MarkConversationAsUnreadIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `operation`, `conversation`, `unreadState`, `OpenWhenRun` |
+| Search in Messages | `com.apple.MobileSMS.SearchMessagesIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `criteria` |
+| Send Tapback | `com.apple.MobileSMS.SendMessageReactionIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `message`, `reaction`, `WFLinkMessagesEntityVariablePickerKey`; `reaction` cases are `2000` Love, `2001` Like, `2002` Dislike, `2003` Laugh At, `2004` Emphasize, `2005` Question. |
+| Find Message (Messages) | `com.apple.MobileSMS.MessageEntity` | macOS 27 v78 + iOS 27 Simulator v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Find Album | `com.apple.Photos.AlbumEntity` / `com.apple.mobileslideshow.AlbumEntity` | macOS 27 v78 + iOS 27 Simulator v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Search | `com.apple.Photos.PhotosSearchAssistantIntent` / `com.apple.mobileslideshow.PhotosSearchAssistantIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `criteria`; renamed from **Search Photos** in the Automators OS 26.4 delta. |
+| Auto Enhance Photo | `com.apple.Photos.EnhanceIntent` / `com.apple.mobileslideshow.EnhanceIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `assets`, `enabled` |
+| Favorite Photos | `com.apple.Photos.FavoriteAssetsIntent` / `com.apple.mobileslideshow.FavoriteAssetsIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `assets`, `action`; action cases are `favorite` and `unfavorite`. |
+| Open Photo | `com.apple.Photos.OpenAssetIntent` / `com.apple.mobileslideshow.OpenAssetIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `target` |
+| Hide Photos | `com.apple.Photos.HideAssetsIntent` / `com.apple.mobileslideshow.HideAssetsIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `assets`, `action`; action cases are `hide` and `unhide`. |
+| Delete Albums | `com.apple.Photos.DeleteAlbumsIntent` / `com.apple.mobileslideshow.DeleteAlbumsIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `entities` |
+| Delete Albums | `com.apple.Photos.PhotosDeleteAlbumsAssistantIntent` / `com.apple.mobileslideshow.PhotosDeleteAlbumsAssistantIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `entities` |
+| Find Message (Mail) | `com.apple.mail.MailMessage` / `com.apple.mail.MailMessageEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
 | Create Group | `com.apple.reminders.CreateGroupAppIntent` | macOS 27 v78 | `name`, `lists` |
 | Create Section | `com.apple.reminders.CreateSectionAppIntent` | macOS 27 v78 | `list`, `name`, `OpenWhenRun` |
 | Edit List | `com.apple.reminders.ListEntity-UpdatableEntity` | macOS 27 v78 | `badge`, `color`, `entity`, `parent` |
 | Delete Lists | `com.apple.reminders.DeleteListsAppIntent` | macOS 27 v78 | `entities` |
 | Delete Groups | `com.apple.reminders.DeleteRemindersListGroupsAppIntent` | macOS 27 v78 | `entities`, `deleteSublists` |
 | Delete Sections | `com.apple.reminders.DeleteSectionsAppIntent` | macOS 27 v78 | `entities` |
+| Open VPN Settings | `com.apple.systempreferences.OpenVPNDeepLink` | macOS 27 v78 | none |
+| Get Current VPN | `com.apple.systempreferences.CurrentlyConnectedVPN` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
+| Update Current VPN | `com.apple.systempreferences.CurrentlyConnectedVPN-UpdatableEntity` | macOS 27 v78 | `entity`, `value` |
+| Update VPN Connect On Demand | `com.apple.systempreferences.VPNConfigurationEntity-UpdatableEntity` | macOS 27 v78 | `connectOnDemand`, `entity` |
 | Open Accessibility Switch Control Settings | `com.apple.systempreferences.OpenAccessibilitySwitchControlStaticDeepLinks` | macOS 27 v78 | `target`; `switchControlSwitches` opens the Switches pane |
 | Set Switch Control | `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleSwitchControlIntent` | macOS 27 v78 | `operation`, `state`, `ShowWhenRun` |
 | Get Switch Control | `com.apple.systempreferences.AxFeatureSwitchcontrolEntity` | macOS 27 v78 | `WFContentItemFilter`, `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled`, `WFContentItemLimitNumber`, `WFCompoundType`, `WFContentItemInputParameter` |
@@ -79,7 +88,34 @@ These entries document authoring metadata. They do not prove runtime availabilit
 | Mute Hearing Device Volume | `com.apple.HearingApp.MuteVolumeIntent` | iOS 27 Simulator v78 | none |
 | Select Hearing Device Preset | `com.apple.HearingApp.SelectPresetIntent` | iOS 27 runtime metadata + Simulator v78 | `presetName`, `ear` (`HearingEarSelection`: Left/Right/Both) |
 
-The Automators thread reports **Toggle Vehicle Motion Cues**; the closest confirmed ToolKit match is `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent`, localized as **Set Motion Cues** in the local macOS 27 v78 database. It also reports **Toggle Hearing Aid Mute**; the iOS 27 runtime metadata localizes `com.apple.HearingApp.MuteVolumeIntent` as **Mute Hearing Device Volume** with no parameters, alongside related Adjust Volume and Select Preset intents. The thread also reports **Set Switch Control Switch Set**; the local macOS 27 v78 database has **Set Switch Control** as a simple on/off intent, and it has `switchControlSwitches` only as a deep-link target for opening the Switches pane. No active switch-set picker/setter appeared in local macOS 27 v78, AccessibilitySettings AppIntents metadata, or hydrated iPhone/iPadOS 27 Simulator v78 databases. Do not author Switch Control switch-set changes until an exported shortcut or a device ToolKit database confirms the identifier and parameter schema.
+Messages metadata notes: `Open Inbox` exposes `filterMode` as a numeric enum from the local ToolKit database; observed titles include **Unknown Senders**, **All Transactions**, **All Promotions**, **Spam**, **Recently Deleted**, **Unread**, and **Send Later**, but several numeric cases are all localized as **Messages**, so prefer exported samples before hard-coding those ambiguous values. `Mark as Read` uses `operation` cases `mark` / `toggle`, `unreadState` is a boolean rendered as **Unread** / **Read**, and `OpenWhenRun` is a standard boolean. `Find Message (Messages)` sort properties are `isRead`, `body`, `subject`, `date`, and `Random`; `WFCompoundType` uses `0` (**Any**) / `1` (**All**) and `WFContentItemInputParameter = Library` (**Message**). `Send Tapback` reaction values are documented in the table above.
+
+Photos uses platform-specific AppIntent namespaces in v78: prefer `com.apple.Photos.*` on macOS and `com.apple.mobileslideshow.*` on iOS/iPadOS for the paired rows above. `Find Album` sort properties are `albumType`, `name`, `creationDate`, and `Random`; `WFCompoundType` uses `0` (**Any**) / `1` (**All**) and `WFContentItemInputParameter = Library` (**Album**). The Photos action enums currently exposed by ToolKit are simple literal values for `Favorite Photos` (`favorite` / `unfavorite`), `Hide Photos` (`hide` / `unhide`), and `Search` criteria as plain text; entity picker serialization for concrete albums/photos still needs exported samples.
+
+Mail exposes both `com.apple.mail.MailMessage` and `com.apple.mail.MailMessageEntity` for **Find Message**. The older row sorts by `dateReceived` or `Random`; the entity row sorts by `subject`, `body`, `dateReceived`, `isRead`, or `Random`. Keep both as valid aliases until an exported shortcut shows one is deprecated.
+
+Reminders metadata notes: `Edit List` in ToolKit v78 exposes only `badge`, `color`, `entity`, and `parent` as top-level parameters, even though the Automators row describes a broader set of editable properties such as Auto-Categorize, Pinned, List Layout, Name, Sharing Participants, Show Completed, Sorting Style, and Type. Do not invent those missing keys until an exported shortcut proves their plist shape. `Delete Groups` also exposes `deleteSublists` as a boolean.
+
+For current VPN output, prefer the classic WF action `is.workflow.actions.vpn.get`; `com.apple.systempreferences.CurrentlyConnectedVPN` is an AppIntent entity/query row with filter-style metadata.
+
+### Linked OS 18 to 26.1 ToolKit Deltas
+
+The earlier Automators iOS 18 to OS 26.1 thread includes additional rows that local ToolKit v78 can identify. These are covered by the packaged parameter and enum catalogs, but picker/entity values still require exported samples before hard-coding authoring templates.
+
+| Display Name | Identifier | Source | Observed Parameters |
+|--------------|------------|--------|---------------------|
+| Add Alarm | `com.apple.mobiletimer-framework.MobileTimerIntents.MTCreateAlarmIntent` | macOS 27 v78 | `dateComponents`, `name`, `repeats`, `allowsSnooze`, `OpenWhenRun`; `repeats` cases are `sunday` through `saturday`. |
+| Create List | `com.apple.reminders.TTRCreateListAppIntent` | macOS 27 v78 | `name`, `type`, `group`, `OpenWhenRun`; `type` cases are `standard` and `groceries`. |
+| Open Person | `com.apple.Photos.OpenPersonIntent` / `com.apple.mobileslideshow.OpenPersonIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `target` person/pet entity. |
+| Set Library View | `com.apple.Photos.FilterLibraryIntent` / `com.apple.mobileslideshow.FilterLibraryIntent` | macOS 27 v78 + iOS 27 Simulator v78 | `viewMode`; cases are `both`, `personal`, and `shared`. Assistant variants `PhotosFilterLibraryAssistantIntent` use the same cases. |
+| Change Background Sound | `com.apple.UniversalAccess.UASettingsShortcuts.UASetBackgroundSoundIntent` | macOS 27 v78 | `backgroundSound`, `ShowWhenRun`; confirmed sound cases include `BalancedNoise`, `BrightNoise`, `DarkNoise`, `Ocean`, `Rain`, `Stream`, `Babble`, `Steam`, `Airplane`, `Boat`, `Bus`, `Train`, `RainOnRoof`, `QuietNight`, `Fire`, and `Night`. |
+| Set Background Sounds Volume | `com.apple.UniversalAccess.UASettingsShortcuts.UASetBackgroundSoundsVolumeIntent` | macOS 27 v78 | `volumeValue`, `ShowWhenRun`. |
+| Set Background Sounds Timer Interval | `com.apple.UniversalAccess.UASettingsShortcuts.UASetBackgroundSoundsTimerIntent` | macOS 27 v78 | `interval`, `duration`, `endInterval`, `always`, `ShowWhenRun`; `interval` cases are `endInterval` and `duration`. |
+| Toggle Background Sounds | `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleBackgroundSoundsIntent` | macOS 27 v78 | `operation`, `state`, `ShowWhenRun`; `operation` cases are `turn` and `toggle`. |
+
+The Automators thread reports **Toggle Vehicle Motion Cues**; `AccessibilityUtilities.framework` defines the private `ToggleVehicleMotionCues` / likely `AXToggleVehicleMotionCuesIntent` with `operation` and `state`, while the confirmed ToolKit match is `com.apple.UniversalAccess.UASettingsShortcuts.UAToggleMotionCuesIntent`, localized as **Set Motion Cues** in the local macOS 27 v78 database. The thread also reports **Toggle Hearing Aid Mute**; `AccessibilityUtilities.framework` defines private `ToggleHearingAidMute` / likely `AXToggleHearingAidMuteIntent` with `operation` and `state`, while the iOS 27 ToolKit/runtime metadata localizes `com.apple.HearingApp.MuteVolumeIntent` as **Mute Hearing Device Volume** with no parameters, alongside related Adjust Volume and Select Preset intents. `Set Appearance on Apple TV` uses an Apple TV device picker plus `appearanceToggle`; use the literal values `light` or `dark` for the appearance enum.
+
+The thread also reports **Set Switch Control Switch Set**. This is real in `/System/Library/PrivateFrameworks/AccessibilityUtilities.framework/.../Intents.intentdefinition` as `SetSwitchControlProfile` / likely `AXSetSwitchControlProfileIntent`, with a dynamic `profile` object parameter of type `SwitchControlProfile` and title **Set Switch Control Switch Set**. However, it is not in the local macOS 27 v78 ToolKit database, the hydrated iPhone/iPadOS 27 Simulator v78 ToolKit databases, or ToolRenderer's tool descriptions. The confirmed ToolKit coverage remains **Set Switch Control** as a simple on/off intent plus `switchControlSwitches` as a deep-link target for opening the Switches pane. Do not author Switch Control switch-set changes until an exported shortcut or a device ToolKit database confirms the `WFWorkflowActionIdentifier` and parameter serialization.
 
 ## How to Invoke AppIntents
 
@@ -472,6 +508,26 @@ The AppIntents below exist in the allowlist for completeness (for actions like `
 | `com.apple.AppKit.WritingToolsComposeIntent` | Text Compose |
 | `com.apple.AppKit.WritingToolsProofreadIntent` | Proofread |
 | `com.apple.AppKit.WritingToolsRewriteIntent` | Rewrite |
+
+#### Apple Intelligence / AppKit Runtime Actions
+
+macOS 27 ToolKit v78 exposes additional AppKit and Writing Tools intents that operate on a target app/process/window context. They are packaged in the v78 parameter catalog and validator can check top-level keys, simple enum values, and booleans, but authoring useful shortcuts still requires real app/window context values such as `app`, `processInstanceIdentifier`, `targetWindowIdentifier`, and `targetFrame`.
+
+| Identifier | Display Name | Observed Parameters |
+|------------|--------------|---------------------|
+| `com.apple.AppKit.FetchIntelligenceCommands` | Fetch Intelligence Commands | `app`, `processInstanceIdentifier`, `cachedIfAvailable`, `includeUntitled`, `includeNonPerformable` |
+| `com.apple.AppKit.InsertIntelligenceText` | Insert Intelligence Text | `app`, `processInstanceIdentifier`, `text`, `replaceExisting`, `targetWindowIdentifier`, `targetFrame` |
+| `com.apple.AppKit.PresentWritingToolsResult` | Present Writing Tools Result | `app`, `text`, `replaceExisting`, `targetWindowIdentifier` |
+| `com.apple.AppKit.RequestEditingContext` | Request Editing Context | `app`, `targetWindowIdentifier`, `targetFrame` |
+| `com.apple.AppKit.RunIntelligenceCommand` | Run Intelligence Command | `app`, `processInstanceIdentifier`, `command` |
+| `com.apple.AppKit.RunIntelligenceCommandForKey` | Run Intelligence Command For Key | `app`, `processInstanceIdentifier`, `identifier`, `command`, `hierarchyComponents` |
+| `com.apple.AppKit.WritingToolsCanPerformIntent` | Can Perform Writing Tools | `app`, `processInstanceIdentifier` |
+| `com.apple.AppKit.WritingToolsOpenEndedIntent` | Open Ended | `app`, `processInstanceIdentifier`, `prompt` |
+| `com.apple.AppKit.WritingToolsPartnerIntent` | Text Compose | `app`, `processInstanceIdentifier`, `prompt`, `externalProviderID` |
+| `com.apple.AppKit.WritingToolsSummarizeIntent` | Summarize | `app`, `processInstanceIdentifier` |
+| `com.apple.AppKit.WritingToolsTransformKeyPointsIntent` | Key Points | `app`, `processInstanceIdentifier` |
+| `com.apple.AppKit.WritingToolsTransformListIntent` | List | `app`, `processInstanceIdentifier` |
+| `com.apple.AppKit.WritingToolsTransformTableIntent` | Table | `app`, `processInstanceIdentifier` |
 
 ### Voice Memos (24 actions)
 

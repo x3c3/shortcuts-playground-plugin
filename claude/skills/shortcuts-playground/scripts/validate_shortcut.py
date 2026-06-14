@@ -122,6 +122,80 @@ LIST_PRODUCING_ACTIONS = {
     "is.workflow.actions.list",
     "is.workflow.actions.additemtolist",
 }
+ADD_ITEM_TO_LIST_POSITIONS = {
+    "Beginning",
+    "End",
+    "Index",
+}
+CHOOSE_FROM_LIST_BOOLEAN_KEYS = {
+    "WFChooseFromListActionSelectAll",
+    "WFChooseFromListActionSelectMultiple",
+}
+
+STORED_CONTENT_ACTIONS = {
+    "is.workflow.actions.deletestoredcontent",
+    "is.workflow.actions.getstoredcontent",
+    "is.workflow.actions.setstoredcontent",
+}
+
+ON_SCREEN_CONTEXT_SCOPES = {
+    "All Visible",
+    "Focused App Only",
+}
+
+VPN_OPERATIONS = {
+    "Connect",
+    "Disconnect",
+    "Set On Demand",
+    "Toggle",
+    "Toggle On Demand",
+}
+VPN_SORT_PROPERTIES = {
+    "Name",
+    "Random",
+    "Server Address",
+}
+VPN_COMPOUND_TYPES = {
+    0,
+    1,
+    "0",
+    "1",
+    "Any",
+    "All",
+}
+FIND_PLACES_SORT_ORDERS = {
+    "Distance",
+    "Relevance",
+}
+APPEND_NOTE_OPERATIONS = {
+    "append",
+    "prepend",
+}
+MULTITASKING_MODES = {
+    "fullScreenApps",
+    "stageManager",
+    "windowedApps",
+}
+MATH_OPERATIONS = {
+    "-",
+    "×",
+    "÷",
+    "…",
+}
+OPEN_APP_WINDOWING_FORMATS = {
+    "Full Screen",
+    "Left",
+    "Right",
+    "Top",
+    "Bottom",
+    "Top Leading",
+    "Top Trailing",
+    "Bottom Leading",
+    "Bottom Trailing",
+    "Left Third",
+    "Middle Third",
+    "Right Third",
+}
 
 TOOLKIT_SNAPSHOT_MIN_MACOS_MAJOR = {
     # ToolKit v78 was captured from macOS 27 Golden Gate. Keep this gated so
@@ -144,13 +218,14 @@ OS27_PARAMETER_KEYS_BY_ACTION = {
     # ToolKit v78 metadata. These action identifiers may exist on older OSes,
     # but the listed top-level parameter keys are OS 27-era metadata.
     "com.apple.Safari.CreateNewTabGroup": {"contents"},
+    "com.apple.mobilesafari.CreateNewTabGroup": {"contents"},
     "com.apple.mobilenotes.SharingExtension": {"interpretAsMarkdown"},
     "is.workflow.actions.appendnote": {
         "ignoreWhitespace",
         "interpretAsMarkdown",
         "section",
     },
-    "is.workflow.actions.askllm": {"WFAllowWebSearch"},
+    "is.workflow.actions.askllm": {"FollowUp", "WFAllowWebSearch"},
     "is.workflow.actions.extracttextfromimage": {"imageFile"},
     "is.workflow.actions.getdistance": {"WFAvoidHighways", "WFAvoidTolls"},
     "is.workflow.actions.gettraveltime": {"WFAvoidHighways", "WFAvoidTolls"},
@@ -159,6 +234,38 @@ OS27_PARAMETER_KEYS_BY_ACTION = {
     "is.workflow.actions.scanbarcode": {"imageFile"},
 }
 OS27_PARAMETER_REASON = "macOS 27+ (toolkit-v78 parameter)"
+OS27_BOOLEAN_PARAMETER_KEYS_BY_ACTION = {
+    "com.apple.ShortcutsActions.SetBatteryChargeLimitAction": {"setUntilTomorrow"},
+    "com.apple.ShortcutsActions.SetMultitaskingModeAction": {
+        "automaticallyShowAndHideDock",
+        "showRecentApps",
+    },
+    "com.apple.mobilenotes.SharingExtension": {"interpretAsMarkdown"},
+    "is.workflow.actions.addnewreminder": {"WFUrgent"},
+    "is.workflow.actions.appendnote": {"ignoreWhitespace", "interpretAsMarkdown"},
+    "is.workflow.actions.askllm": {"FollowUp", "WFAllowWebSearch"},
+    "is.workflow.actions.getdistance": {"WFAvoidHighways", "WFAvoidTolls"},
+    "is.workflow.actions.gettraveltime": {"WFAvoidHighways", "WFAvoidTolls"},
+}
+GET_DISTANCE_ROUTE_MODES = {"Driving", "Walking", "Biking", "Direct"}
+GET_TRAVEL_TIME_ROUTE_MODES = {"Driving", "Walking", "Biking", "Transit"}
+GET_DISTANCE_UNITS = {"Miles", "Kilometers"}
+GET_DISTANCE_ACCURACY_VALUES = {
+    "Best",
+    "NearestTenMeters",
+    "HundredMeters",
+    "Kilometer",
+    "ThreeKilometers",
+}
+APP_ACTION_MODES = {"App", "All Apps"}
+CONTENT_ITEM_INPUT_PARAMETERS = {"Library"}
+TOOLKIT_PARAMETER_CATALOG_MIN_MACOS_MAJOR = 27
+TOOLKIT_PARAMETER_STRUCTURAL_KEYS = {
+    # Shortcuts plist metadata keys, not action parameters in ToolKit.
+    "AppIntentDescriptor",
+    "CustomOutputName",
+    "UUID",
+}
 
 REQUIRED_INPUT_ACTIONS = {
     # Actions that should always have explicit input wired
@@ -925,6 +1032,226 @@ def load_future_parameter_key_reasons(target_macos_major: int | None) -> dict[st
     }
 
 
+def _catalog_platforms_match_target(platforms: list[str], target_platform: str | None) -> bool:
+    if target_platform is None:
+        return True
+    for platform_name in platforms:
+        if _catalog_platform_name_matches_target(platform_name, target_platform):
+            return True
+    return False
+
+
+def _catalog_platform_name_matches_target(platform_name: str, target_platform: str | None) -> bool:
+    if target_platform is None:
+        return True
+    if target_platform == "ios" and platform_name.startswith("iOS"):
+        return True
+    if target_platform == "macos" and platform_name.startswith("macOS"):
+        return True
+    return False
+
+
+def _catalog_parameter_matches_target(
+    parameter: dict,
+    target_platform: str | None,
+) -> bool:
+    platforms = parameter.get("platforms")
+    if not isinstance(platforms, list) or not platforms:
+        return True
+    return _catalog_platforms_match_target(
+        [platform for platform in platforms if isinstance(platform, str)],
+        target_platform,
+    )
+
+
+def load_toolkit_parameter_schemas(
+    skill_dir: Path,
+    target_macos_major: int | None = None,
+    target_platform: str | None = "macos",
+) -> dict[str, set[str]]:
+    """Load target-gated v78 parameter schemas for first-party AppIntent IDs.
+
+    The v78 ToolKit parameter catalog is useful for com.apple AppIntent-style
+    actions, where top-level keys map cleanly to AppIntent parameters. It is not
+    complete enough for every legacy WF action because those can include UI
+    state keys that are valid in plists but absent from ToolKit metadata.
+    """
+
+    if (
+        target_macos_major is not None
+        and target_macos_major < TOOLKIT_PARAMETER_CATALOG_MIN_MACOS_MAJOR
+    ):
+        return {}
+    path = skill_dir / "data/toolkit-v78-first-party-parameter-keys.json"
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    schemas: dict[str, set[str]] = {}
+    for identifier, entry in (payload.get("tools") or {}).items():
+        if not isinstance(identifier, str) or not identifier.startswith("com.apple."):
+            continue
+        if not isinstance(entry, dict):
+            continue
+        platforms = entry.get("platforms") or []
+        if not _catalog_platforms_match_target(platforms, target_platform):
+            continue
+        keys = {
+            parameter.get("key")
+            for parameter in (entry.get("parameters") or [])
+            if isinstance(parameter, dict)
+            and isinstance(parameter.get("key"), str)
+            and _catalog_parameter_matches_target(parameter, target_platform)
+        }
+        schemas[identifier] = keys
+    return schemas
+
+
+def _parameter_type_python_names(
+    parameter: dict,
+    target_platform: str | None = None,
+) -> list[str]:
+    if target_platform is not None:
+        by_platform = parameter.get("typePythonNamesByPlatform")
+        if isinstance(by_platform, dict):
+            names_by_target: list[str] = []
+            for platform_name, type_names in by_platform.items():
+                if not isinstance(platform_name, str) or not _catalog_platform_name_matches_target(
+                    platform_name,
+                    target_platform,
+                ):
+                    continue
+                if isinstance(type_names, list):
+                    names_by_target.extend(
+                        name for name in type_names if isinstance(name, str) and name
+                    )
+            if names_by_target:
+                return sorted(set(names_by_target))
+    names: list[str] = []
+    single = parameter.get("typePythonName")
+    if isinstance(single, str) and single:
+        names.append(single)
+    multi = parameter.get("typePythonNames")
+    if isinstance(multi, list):
+        names.extend(name for name in multi if isinstance(name, str) and name)
+    return sorted(set(names))
+
+
+def load_toolkit_parameter_enum_cases(
+    skill_dir: Path,
+    target_macos_major: int | None = None,
+    target_platform: str | None = "macos",
+) -> dict[str, dict[str, set[str]]]:
+    """Load target-gated literal enum cases for simple first-party params.
+
+    This intentionally validates only parameters with exactly one enum type. If
+    ToolKit reports a union of enum and non-enum types, or several possible enum
+    types, the validator skips that parameter to avoid rejecting valid picker or
+    entity states that cannot be represented by a simple literal string. The
+    enum checks are safe for both AppIntents and classic WF actions because they
+    only run when a known enum key is present; unlike AppIntent schemas, they do
+    not reject extra top-level keys on classic WF actions.
+    """
+
+    if (
+        target_macos_major is not None
+        and target_macos_major < TOOLKIT_PARAMETER_CATALOG_MIN_MACOS_MAJOR
+    ):
+        return {}
+    parameter_path = skill_dir / "data/toolkit-v78-first-party-parameter-keys.json"
+    enum_path = skill_dir / "data/toolkit-v78-first-party-enum-cases.json"
+    if not parameter_path.exists() or not enum_path.exists():
+        return {}
+    with parameter_path.open("r", encoding="utf-8") as handle:
+        parameter_payload = json.load(handle)
+    with enum_path.open("r", encoding="utf-8") as handle:
+        enum_payload = json.load(handle)
+
+    enum_types = enum_payload.get("types") or {}
+    schemas: dict[str, dict[str, set[str]]] = {}
+    for identifier, entry in (parameter_payload.get("tools") or {}).items():
+        if not isinstance(identifier, str) or not (
+            identifier.startswith("com.apple.")
+            or identifier.startswith("is.workflow.actions.")
+        ):
+            continue
+        if not isinstance(entry, dict):
+            continue
+        platforms = entry.get("platforms") or []
+        if not _catalog_platforms_match_target(platforms, target_platform):
+            continue
+        parameter_cases: dict[str, set[str]] = {}
+        for parameter in entry.get("parameters") or []:
+            if not isinstance(parameter, dict):
+                continue
+            if not _catalog_parameter_matches_target(parameter, target_platform):
+                continue
+            key = parameter.get("key")
+            if not isinstance(key, str):
+                continue
+            type_names = _parameter_type_python_names(parameter, target_platform)
+            if len(type_names) != 1:
+                continue
+            enum_entry = enum_types.get(type_names[0])
+            if not isinstance(enum_entry, dict):
+                continue
+            case_ids = {
+                case.get("id")
+                for case in (enum_entry.get("cases") or [])
+                if isinstance(case, dict) and isinstance(case.get("id"), str)
+            }
+            if case_ids:
+                parameter_cases[key] = case_ids
+        if parameter_cases:
+            schemas[identifier] = parameter_cases
+    return schemas
+
+
+def load_toolkit_parameter_boolean_keys(
+    skill_dir: Path,
+    target_macos_major: int | None = None,
+    target_platform: str | None = "macos",
+) -> dict[str, set[str]]:
+    """Load target-gated boolean parameter keys for first-party actions."""
+
+    if (
+        target_macos_major is not None
+        and target_macos_major < TOOLKIT_PARAMETER_CATALOG_MIN_MACOS_MAJOR
+    ):
+        return {}
+    path = skill_dir / "data/toolkit-v78-first-party-parameter-keys.json"
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    schemas: dict[str, set[str]] = {}
+    for identifier, entry in (payload.get("tools") or {}).items():
+        if not isinstance(identifier, str) or not (
+            identifier.startswith("com.apple.")
+            or identifier.startswith("is.workflow.actions.")
+        ):
+            continue
+        if not isinstance(entry, dict):
+            continue
+        platforms = entry.get("platforms") or []
+        if not _catalog_platforms_match_target(platforms, target_platform):
+            continue
+        keys: set[str] = set()
+        for parameter in entry.get("parameters") or []:
+            if not isinstance(parameter, dict):
+                continue
+            if not _catalog_parameter_matches_target(parameter, target_platform):
+                continue
+            key = parameter.get("key")
+            if not isinstance(key, str):
+                continue
+            if _parameter_type_python_names(parameter, target_platform) == ["bool"]:
+                keys.add(key)
+        if keys:
+            schemas[identifier] = keys
+    return schemas
+
+
 def load_allowed_ids(
     skill_dir: Path,
     target_macos_major: int | None = None,
@@ -1227,6 +1554,40 @@ def _snippet(params: dict) -> str:
     return s
 
 
+def _literal_enum_values(value) -> list[str]:
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        return [stripped] if stripped else []
+    if isinstance(value, int):
+        return [str(value)]
+    if isinstance(value, list):
+        values: list[str] = []
+        for item in value:
+            values.extend(_literal_enum_values(item))
+        return values
+    return []
+
+
+def _format_allowed_values(values: set[str], limit: int = 20) -> str:
+    ordered = sorted(values)
+    preview = ", ".join(repr(value) for value in ordered[:limit])
+    if len(ordered) > limit:
+        preview += f", ... (+{len(ordered) - limit} more)"
+    return preview
+
+
+def _is_allowed_toolkit_enum_alias(ident: str, key: str, value: str, allowed_values: set[str]) -> bool:
+    if (
+        ident == "is.workflow.actions.filter.vpns"
+        and key == "WFCompoundType"
+        and {"0", "1"}.issubset(allowed_values)
+    ):
+        return value in {"Any", "All"}
+    return False
+
+
 def _input_is_attached(value) -> bool:
     if not isinstance(value, dict):
         return False
@@ -1234,6 +1595,23 @@ def _input_is_attached(value) -> bool:
         return _input_is_attached(value.get("Variable"))
     if value.get("WFSerializationType") in {"WFTextTokenAttachment", "WFTextTokenString"}:
         return True
+    return False
+
+
+def _parameter_is_dynamic_attachment(value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    if value.get("Type") == "Variable" and isinstance(value.get("Variable"), dict):
+        return _parameter_is_dynamic_attachment(value.get("Variable"))
+    if value.get("WFSerializationType") == "WFTextTokenAttachment":
+        token_value = value.get("Value")
+        return isinstance(token_value, dict) and bool(token_value.get("Type"))
+    if value.get("WFSerializationType") == "WFTextTokenString":
+        token_value = value.get("Value")
+        if not isinstance(token_value, dict):
+            return False
+        attachments = token_value.get("attachmentsByRange")
+        return isinstance(attachments, dict) and bool(attachments)
     return False
 
 
@@ -1272,6 +1650,18 @@ def _input_is_token_string(value) -> bool:
         return False
     attachments = inner.get("attachmentsByRange")
     return isinstance(attachments, dict) and bool(attachments)
+
+
+def _input_is_single_placeholder_token_string(value) -> bool:
+    if not _input_is_token_string(value):
+        return False
+    inner = value.get("Value")
+    if not isinstance(inner, dict):
+        return False
+    if inner.get("string") != "\ufffc":
+        return False
+    attachments = inner.get("attachmentsByRange")
+    return isinstance(attachments, dict) and list(attachments.keys()) == ["{0, 1}"]
 
 
 def _input_is_editor_visible(value) -> bool:
@@ -1638,11 +2028,17 @@ def validate(
     allowed_icon_colors: Optional[set[int]] = None,
     unavailable_ids: Optional[dict[str, str]] = None,
     unavailable_parameter_keys: Optional[dict[str, dict[str, str]]] = None,
+    toolkit_parameter_schemas: Optional[dict[str, set[str]]] = None,
+    toolkit_parameter_enum_cases: Optional[dict[str, dict[str, set[str]]]] = None,
+    toolkit_parameter_boolean_keys: Optional[dict[str, set[str]]] = None,
 ) -> Tuple[list[str], Optional[Tuple[int, str, str]]]:
     errors: list[str] = []
     first_error: Optional[Tuple[int, str, str]] = None
     unavailable_ids = unavailable_ids or {}
     unavailable_parameter_keys = unavailable_parameter_keys or {}
+    toolkit_parameter_schemas = toolkit_parameter_schemas or {}
+    toolkit_parameter_enum_cases = toolkit_parameter_enum_cases or {}
+    toolkit_parameter_boolean_keys = toolkit_parameter_boolean_keys or {}
     actions = plist.get("WFWorkflowActions", [])
     comments: list[str] = []
     uuid_to_ident: dict[str, str] = {}
@@ -1701,6 +2097,63 @@ def validate(
                         f"Parameter '{key}' on {ident} requires {parameter_reasons[key]} "
                         f"at index {idx}. Set --target-macos 27 or "
                         "SHORTCUTS_PLAYGROUND_TARGET_MACOS=27 only when building for Golden Gate."
+                    )
+        if isinstance(ident, str) and ident.startswith("com.apple."):
+            descriptor = params.get("AppIntentDescriptor")
+            if not isinstance(descriptor, dict):
+                errors.append(
+                    f"AppIntent action missing AppIntentDescriptor at index {idx}: {ident}"
+                )
+            elif not descriptor.get("AppIntentIdentifier"):
+                errors.append(
+                    f"AppIntentDescriptor missing AppIntentIdentifier at index {idx}: {ident}"
+                )
+        expected_toolkit_keys = toolkit_parameter_schemas.get(ident) if ident else None
+        if expected_toolkit_keys is not None:
+            unknown_keys = sorted(
+                key
+                for key in params
+                if key not in expected_toolkit_keys
+                and key not in TOOLKIT_PARAMETER_STRUCTURAL_KEYS
+            )
+            if unknown_keys:
+                expected = ", ".join(sorted(expected_toolkit_keys)) or "no action parameters"
+                errors.append(
+                    f"Unknown AppIntent parameter key(s) for {ident} at index {idx}: "
+                    f"{', '.join(unknown_keys)}. ToolKit v78 expects: {expected}."
+                )
+        expected_enum_cases = toolkit_parameter_enum_cases.get(ident) if ident else None
+        if expected_enum_cases:
+            enum_error_kind = "AppIntent" if str(ident).startswith("com.apple.") else "ToolKit"
+            for key, allowed_values in sorted(expected_enum_cases.items()):
+                if key not in params:
+                    continue
+                literal_values = _literal_enum_values(params.get(key))
+                for literal_value in literal_values:
+                    if literal_value not in allowed_values and not _is_allowed_toolkit_enum_alias(
+                        ident,
+                        key,
+                        literal_value,
+                        allowed_values,
+                    ):
+                        errors.append(
+                            f"Invalid {enum_error_kind} enum value for {ident}.{key} at index {idx}: "
+                            f"{literal_value!r}. ToolKit v78 allows: "
+                            f"{_format_allowed_values(allowed_values)}."
+                        )
+        expected_boolean_keys = toolkit_parameter_boolean_keys.get(ident) if ident else None
+        if expected_boolean_keys:
+            boolean_error_kind = "AppIntent" if str(ident).startswith("com.apple.") else "ToolKit"
+            for key in sorted(expected_boolean_keys):
+                value = params.get(key)
+                if (
+                    key in params
+                    and not isinstance(value, bool)
+                    and not _parameter_is_dynamic_attachment(value)
+                ):
+                    errors.append(
+                        f"Invalid {boolean_error_kind} boolean value for {ident}.{key} at index {idx}: "
+                        "expected a plist boolean."
                     )
         used_output_uuids.update(iter_action_output_refs(params))
         if not unit_text_found:
@@ -2284,6 +2737,16 @@ def validate(
             cond = params.get("WFCondition")
             inp = params.get("WFInput")
             wfconds = params.get("WFConditions")
+            if mode == 1 and cond is None and wfconds is None:
+                # Apple may preserve WFInput on imported plain Otherwise blocks,
+                # but they intentionally have no condition or comparison literal.
+                literal_keys = {
+                    "WFConditionalActionString",
+                    "WFNumberValue",
+                    "WFAnotherNumber",
+                }
+                if not any(key in params for key in literal_keys):
+                    continue
 
             # Multi-condition pattern: WFConditions holds an array of templates,
             # each template is its own (WFCondition + WFInput + literal). When
@@ -2478,6 +2941,47 @@ def validate(
                 f"Shortcut Input action is not runtime-safe on iOS at index {idx}; use ExtensionInput attachment instead"
             )
 
+        if ident == "is.workflow.actions.additemtolist":
+            if _token_param_is_empty(params.get("WFListItem")):
+                errors.append(f"Add Item to List missing WFListItem at index {idx}")
+            if _token_param_is_empty(params.get("WFListVariable")):
+                errors.append(f"Add Item to List missing WFListVariable at index {idx}")
+            insert_position = params.get("WFInsertPosition")
+            if not _token_param_is_empty(insert_position) and insert_position not in ADD_ITEM_TO_LIST_POSITIONS:
+                errors.append(
+                    f"Add Item to List has unknown WFInsertPosition at index {idx}: {insert_position!r}"
+                )
+            if insert_position == "Index":
+                item_index = params.get("WFItemIndex")
+                if _token_param_is_empty(item_index):
+                    errors.append(f"Add Item to List position Index missing WFItemIndex at index {idx}")
+                else:
+                    try:
+                        numeric_index = int(item_index)
+                    except (TypeError, ValueError):
+                        errors.append(
+                            f"Add Item to List WFItemIndex must be an integer at index {idx}: {item_index!r}"
+                        )
+                    else:
+                        if numeric_index < 1:
+                            errors.append(f"Add Item to List WFItemIndex must be 1 or greater at index {idx}")
+            elif "WFItemIndex" in params and not _token_param_is_empty(params.get("WFItemIndex")):
+                errors.append(
+                    f"Add Item to List WFItemIndex is only valid when WFInsertPosition is Index at index {idx}"
+                )
+
+        if ident == "is.workflow.actions.choosefromlist":
+            for key in CHOOSE_FROM_LIST_BOOLEAN_KEYS:
+                value = params.get(key)
+                if value is not None and not isinstance(value, bool):
+                    errors.append(f"{key} must be boolean at index {idx}: {ident}")
+            if params.get("WFChooseFromListActionSelectAll") is True and params.get(
+                "WFChooseFromListActionSelectMultiple"
+            ) is not True:
+                errors.append(
+                    f"WFChooseFromListActionSelectAll requires WFChooseFromListActionSelectMultiple at index {idx}"
+                )
+
         if ident in SHORTCUTS_URL_ACTIONS:
             for _, value in iter_strings(params):
                 if value.startswith("shortcuts://"):
@@ -2539,6 +3043,205 @@ def validate(
                 errors.append(
                     f"WFInput should use WFTextTokenString (placeholder) or wrapped Variable for editor visibility at index {idx}: {ident}"
                 )
+
+        if ident in STORED_CONTENT_ACTIONS:
+            if _token_param_is_empty(params.get("WFStoredContentKey")):
+                errors.append(f"Stored Content action missing WFStoredContentKey at index {idx}: {ident}")
+            global_value = params.get("WFStoredContentGlobalValue")
+            if global_value is not None and not isinstance(global_value, bool):
+                errors.append(
+                    f"WFStoredContentGlobalValue must be boolean at index {idx}: {ident}"
+                )
+            if ident == "is.workflow.actions.setstoredcontent":
+                wfinput = params.get("WFInput")
+                if not wfinput:
+                    errors.append(f"Missing WFInput at index {idx}: {ident}")
+                elif not _input_is_single_placeholder_token_string(wfinput):
+                    errors.append(
+                        f"Store Content WFInput must be a WFTextTokenString with exactly one object placeholder "
+                        f"at index {idx}; bare or wrapped token attachments import as an empty Content parameter"
+                    )
+                elif not _input_has_reference(wfinput):
+                    errors.append(f"Store Content WFInput has no variable/output reference at index {idx}")
+                else:
+                    for out_uuid in _input_action_output_uuids(wfinput):
+                        if out_uuid not in uuid_to_ident:
+                            errors.append(f"Store Content WFInput references unknown OutputUUID at index {idx}")
+
+        if ident == "is.workflow.actions.getonscreencontext":
+            scope = params.get("WFOnScreenContextScope")
+            if not _token_param_is_empty(scope) and scope not in ON_SCREEN_CONTEXT_SCOPES:
+                errors.append(
+                    f"Get What's On Screen has unknown WFOnScreenContextScope at index {idx}: {scope!r}"
+                )
+            limit_enabled = params.get("WFOnScreenContextLimitEnabled")
+            if limit_enabled is not None and not isinstance(limit_enabled, bool):
+                errors.append(
+                    f"WFOnScreenContextLimitEnabled must be boolean at index {idx}"
+                )
+            limit_value = params.get("WFOnScreenContextLimit")
+            if limit_enabled is True:
+                if _token_param_is_empty(limit_value):
+                    errors.append(f"Get What's On Screen limit is enabled but missing WFOnScreenContextLimit at index {idx}")
+                else:
+                    try:
+                        numeric_limit = float(limit_value)
+                    except (TypeError, ValueError):
+                        errors.append(
+                            f"WFOnScreenContextLimit must be numeric at index {idx}: {limit_value!r}"
+                        )
+                    else:
+                        if numeric_limit <= 0:
+                            errors.append(
+                                f"WFOnScreenContextLimit must be greater than 0 at index {idx}"
+                            )
+
+        for key in OS27_BOOLEAN_PARAMETER_KEYS_BY_ACTION.get(ident, set()):
+            value = params.get(key)
+            if value is not None and not isinstance(value, bool):
+                errors.append(f"{key} must be boolean at index {idx}: {ident}")
+
+        if ident == "is.workflow.actions.appendnote":
+            operation = params.get("operation")
+            if not _token_param_is_empty(operation) and operation not in APPEND_NOTE_OPERATIONS:
+                errors.append(
+                    f"Append to Note has unknown operation at index {idx}: {operation!r}"
+                )
+
+        if ident in {"is.workflow.actions.getdistance", "is.workflow.actions.gettraveltime"}:
+            route_mode = params.get("WFGetDirectionsActionMode")
+            valid_modes = (
+                GET_DISTANCE_ROUTE_MODES
+                if ident == "is.workflow.actions.getdistance"
+                else GET_TRAVEL_TIME_ROUTE_MODES
+            )
+            if not _token_param_is_empty(route_mode) and route_mode not in valid_modes:
+                errors.append(
+                    f"{ident} has unknown WFGetDirectionsActionMode at index {idx}: {route_mode!r}"
+                )
+            if ident == "is.workflow.actions.getdistance":
+                distance_unit = params.get("WFDistanceUnit")
+                if not _token_param_is_empty(distance_unit) and distance_unit not in GET_DISTANCE_UNITS:
+                    errors.append(
+                        f"Get Distance has unknown WFDistanceUnit at index {idx}: {distance_unit!r}"
+                    )
+                accuracy = params.get("Accuracy")
+                if not _token_param_is_empty(accuracy) and accuracy not in GET_DISTANCE_ACCURACY_VALUES:
+                    errors.append(
+                        f"Get Distance has unknown Accuracy at index {idx}: {accuracy!r}"
+                    )
+
+        if ident == "is.workflow.actions.searchlocalbusinesses":
+            sort_order = params.get("WFSearchSortOrder")
+            if not _token_param_is_empty(sort_order) and sort_order not in FIND_PLACES_SORT_ORDERS:
+                errors.append(
+                    f"Find Places has unknown WFSearchSortOrder at index {idx}: {sort_order!r}"
+                )
+
+        if ident == "com.apple.ShortcutsActions.SetMultitaskingModeAction":
+            mode = params.get("mode")
+            if not _token_param_is_empty(mode) and mode not in MULTITASKING_MODES:
+                errors.append(
+                    f"Set Multitasking Mode has unknown mode at index {idx}: {mode!r}"
+                )
+
+        if ident == "is.workflow.actions.openapp":
+            windowing_format = params.get("WFWindowingFormat")
+            if (
+                not _token_param_is_empty(windowing_format)
+                and windowing_format not in OPEN_APP_WINDOWING_FORMATS
+            ):
+                errors.append(
+                    f"Open App has unknown WFWindowingFormat at index {idx}: {windowing_format!r}"
+                )
+
+        if ident == "is.workflow.actions.scanbarcode":
+            image_file = params.get("imageFile")
+            if _token_param_is_empty(image_file):
+                errors.append(f"Scan QR or Barcode missing imageFile at index {idx}")
+            elif not _input_is_attached(image_file):
+                errors.append(f"Scan QR or Barcode imageFile is not a token attachment at index {idx}")
+            elif not _input_has_reference(image_file):
+                errors.append(f"Scan QR or Barcode imageFile has no variable/output reference at index {idx}")
+            else:
+                for out_uuid in _input_action_output_uuids(image_file):
+                    if out_uuid not in uuid_to_ident:
+                        errors.append(
+                            f"Scan QR or Barcode imageFile references unknown OutputUUID at index {idx}"
+                        )
+
+        if ident in {
+            "com.apple.Safari.CreateNewTabGroup",
+            "com.apple.mobilesafari.CreateNewTabGroup",
+        } and "contents" in params:
+            if _token_param_is_empty(params.get("contents")):
+                errors.append(f"Create Tab Group has empty contents at index {idx}; omit contents or provide URLs/tabs")
+
+        if ident in {"is.workflow.actions.hide.app", "is.workflow.actions.quit.app"}:
+            mode_key = "WFHideAppMode" if ident == "is.workflow.actions.hide.app" else "WFQuitAppMode"
+            mode = params.get(mode_key)
+            if not _token_param_is_empty(mode) and mode not in APP_ACTION_MODES:
+                errors.append(f"{ident} has unknown {mode_key} at index {idx}: {mode!r}")
+            if mode == "App" and _token_param_is_empty(params.get("WFApp")):
+                errors.append(f"{ident} mode App missing WFApp at index {idx}")
+            apps_except = params.get("WFAppsExcept")
+            if "WFAppsExcept" in params and _token_param_is_empty(apps_except):
+                errors.append(f"{ident} has empty WFAppsExcept at index {idx}; omit it or provide apps to keep open")
+            ask_to_save = params.get("WFAskToSaveChanges")
+            if ask_to_save is not None and not isinstance(ask_to_save, bool):
+                errors.append(f"WFAskToSaveChanges must be boolean at index {idx}: {ident}")
+
+        if ident == "is.workflow.actions.filter.vpns":
+            input_parameter = params.get("WFContentItemInputParameter")
+            if not _token_param_is_empty(input_parameter) and input_parameter not in CONTENT_ITEM_INPUT_PARAMETERS:
+                errors.append(
+                    f"Find VPNs has unknown WFContentItemInputParameter at index {idx}: {input_parameter!r}"
+                )
+            sort_property = params.get("WFContentItemSortProperty")
+            if not _token_param_is_empty(sort_property) and sort_property not in VPN_SORT_PROPERTIES:
+                errors.append(
+                    f"Find VPNs has unknown WFContentItemSortProperty at index {idx}: {sort_property!r}"
+                )
+            compound_type = params.get("WFCompoundType")
+            if compound_type is not None and compound_type not in VPN_COMPOUND_TYPES:
+                errors.append(
+                    f"Find VPNs has unknown WFCompoundType at index {idx}: {compound_type!r}"
+                )
+            limit_enabled = params.get("WFContentItemLimitEnabled")
+            if limit_enabled is not None and not isinstance(limit_enabled, bool):
+                errors.append(
+                    f"Find VPNs WFContentItemLimitEnabled must be boolean at index {idx}"
+                )
+            limit_number = params.get("WFContentItemLimitNumber")
+            if limit_enabled is True:
+                if _token_param_is_empty(limit_number):
+                    errors.append(f"Find VPNs limit is enabled but missing WFContentItemLimitNumber at index {idx}")
+                else:
+                    try:
+                        numeric_limit = float(limit_number)
+                    except (TypeError, ValueError):
+                        errors.append(
+                            f"Find VPNs WFContentItemLimitNumber must be numeric at index {idx}: {limit_number!r}"
+                        )
+                    else:
+                        if numeric_limit <= 0:
+                            errors.append(
+                                f"Find VPNs WFContentItemLimitNumber must be greater than 0 at index {idx}"
+                            )
+
+        if ident == "is.workflow.actions.vpn.set":
+            operation = params.get("WFVPNOperation")
+            if _token_param_is_empty(operation):
+                errors.append(f"Set VPN missing WFVPNOperation at index {idx}")
+            elif operation not in VPN_OPERATIONS:
+                errors.append(f"Set VPN has unknown WFVPNOperation at index {idx}: {operation!r}")
+            if _token_param_is_empty(params.get("WFVPN")):
+                errors.append(f"Set VPN missing WFVPN at index {idx}")
+            on_demand_value = params.get("WFOnDemandValue")
+            if on_demand_value is not None and not isinstance(on_demand_value, bool):
+                errors.append(f"WFOnDemandValue must be boolean at index {idx}: {ident}")
+            if operation == "Set On Demand" and on_demand_value is None:
+                errors.append(f"Set VPN operation Set On Demand missing WFOnDemandValue at index {idx}")
 
         if ident == "is.workflow.actions.location" and "WFLocation" not in params:
             errors.append(f"Location action missing WFLocation at index {idx}")
@@ -3353,6 +4056,20 @@ def validate(
                         if isinstance(output_name, str):
                             input_name = output_name
             op = params.get("WFMathOperation")
+            if op == "+":
+                errors.append(
+                    f"Math action uses WFMathOperation '+' at index {idx}; omit WFMathOperation for addition"
+                )
+            elif op == "*":
+                errors.append(
+                    f"Math action uses ASCII '*' at index {idx}; use '×' (U+00D7) for multiplication"
+                )
+            elif op == "/":
+                errors.append(
+                    f"Math action uses ASCII '/' at index {idx}; use '÷' (U+00F7) for division"
+                )
+            elif op is not None and op not in MATH_OPERATIONS:
+                errors.append(f"Math action has unknown WFMathOperation at index {idx}: {op!r}")
             operand = params.get("WFMathOperand")
             literal_operand = _math_operand_literal_string(operand)
             if (
@@ -3533,6 +4250,21 @@ def main() -> int:
         target_platform,
     )
     unavailable_parameter_keys = load_future_parameter_key_reasons(target_macos_major)
+    toolkit_parameter_schemas = load_toolkit_parameter_schemas(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
+    toolkit_parameter_enum_cases = load_toolkit_parameter_enum_cases(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
+    toolkit_parameter_boolean_keys = load_toolkit_parameter_boolean_keys(
+        skill_dir,
+        target_macos_major,
+        target_platform,
+    )
     allowed_glyph_ids, allowed_icon_colors = load_icon_metadata(skill_dir)
 
     try:
@@ -3548,6 +4280,9 @@ def main() -> int:
         allowed_icon_colors,
         unavailable_ids,
         unavailable_parameter_keys,
+        toolkit_parameter_schemas,
+        toolkit_parameter_enum_cases,
+        toolkit_parameter_boolean_keys,
     )
 
     # Repeating-hex UUID check (agent placeholder detection). Runs on the raw

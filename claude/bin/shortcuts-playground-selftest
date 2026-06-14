@@ -87,6 +87,8 @@ DATA_FILES=(
   "toolkit-v78-tool-ids.json"
   "toolkit-v78-ios27-tool-ids.json"
   "toolkit-v78-first-party-parameter-keys.json"
+  "toolkit-v78-first-party-enum-cases.json"
+  "toolkit-v78-trigger-parameter-keys.json"
   "macos27-shortpy-grounding.json"
   "shortcuts-official-glyph-mapping.json"
   "shortcuts-icon-colors.json"
@@ -150,6 +152,8 @@ This shortcut is generated and discarded by shortcuts-playground-selftest. If yo
         <integer>431817727</integer>
     </dict>
     <key>WFWorkflowImportQuestions</key>
+    <array/>
+    <key>WFWorkflowInputContentItemClasses</key>
     <array/>
     <key>WFWorkflowMinimumClientVersion</key>
     <integer>900</integer>

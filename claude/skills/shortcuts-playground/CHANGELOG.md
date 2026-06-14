@@ -1,5 +1,53 @@
 # Autoresearch Loop Changelog
 
+## Date: June 13, 2026 - AppIntent parameter schema validation
+
+### Summary
+
+Started using the packaged Apple ToolKit v78 parameter catalog as an active validator source for first-party AppIntent-style actions.
+
+### Fixes Applied
+
+- Added target-gated `toolkit-v78-first-party-parameter-keys.json` loading to `validate_shortcut.py`.
+- Reject unknown top-level parameter keys for `com.apple.*` actions when the active target has a ToolKit v78 schema for that identifier.
+- Keep regular `is.workflow.actions.*` payloads on the existing targeted validation path because legacy WF actions can include valid plist/UI state keys that are absent from ToolKit parameter metadata.
+- Aligned `lookup_action_grounding.py` with validator target behavior by adding `--target-platform`, iOS/macOS target-platform availability notes, and the same macOS 26 fallback when host detection is unavailable.
+- Added targeted validator support for OS 27 Stored Content actions: `Store Content` now requires explicit `WFInput`, all Stored Content actions require non-empty `WFStoredContentKey`, and `WFStoredContentGlobalValue` must be boolean when present.
+- Added targeted validator support and documentation for OS 27 `Get What's On Screen`: scopes are limited to `All Visible` / `Focused App Only`, the limit-enabled flag must be boolean, and enabled limits require a positive `WFOnScreenContextLimit`.
+- Added targeted validator support and documentation for OS 27 VPN actions: `Find VPNs` now checks sort/compound/limit values, `Set VPN` checks operation/VPN/on-demand fields, and Settings VPN AppIntent rows are documented.
+- Added targeted validator support for the Automators OS 27 parameter deltas: markdown/web/route toggles must be booleans, Maps route modes are checked against ToolKit enums, Scan QR or Barcode requires a tokenized `imageFile`, Create Tab Group rejects empty `contents`, and Hide/Quit App modes are validated.
+- Added the ToolKit v78 `Use Model` `FollowUp` toggle to the OS 27 target-gated parameter list and boolean validator.
+- Added targeted validation and documentation for the linked OS 26.4 ToolKit deltas present in v78 metadata: New Reminder `WFUrgent` must be boolean, Find Places `WFSearchSortOrder` is limited to `Distance`/`Relevance`, Battery Charge Limit `setUntilTomorrow` must be boolean, and Set Multitasking Mode checks `mode`, `automaticallyShowAndHideDock`, and `showRecentApps`.
+- Documented iOS/iPadOS 27-only `Start Workout` and `End Workout` ToolKit rows as target-platform-gated metadata pending exported iPhone/iPad samples.
+- Added structural validation so first-party `com.apple.*` AppIntent actions must include an `AppIntentDescriptor` with an `AppIntentIdentifier`.
+- Tightened OS 27 Store Content validation after UI/database verification: bare or wrapped `WFTextTokenAttachment` inputs sign and import but render as an empty `Content` parameter; Apple saves the manually fixed field as `WFTextTokenString`, and the signer wrappers now retry validator-clean XML format failures after binary plist conversion so that correct shape can be signed.
+- Added `toolkit-v78-first-party-enum-cases.json`, a static enum-case catalog for v78 action and automation-trigger parameter types, and taught `lookup_action_grounding.py` to expose `enumCases` / `enumTypes` in JSON and Markdown output.
+- Added target-gated validator checks for invalid simple literal enum values on first-party `com.apple.*` AppIntent parameters and classic `is.workflow.actions.*` parameters backed by a single ToolKit enum type.
+- Added target-gated validator checks for first-party `com.apple.*` AppIntent and classic `is.workflow.actions.*` boolean parameters backed by ToolKit `bool` types, covering rows such as Set Motion Cues, Set Switch Control, Generate Hash, and Show Alert.
+- Redacted dynamic user-local picker cases from the packaged enum catalog so local Reminders list names and Contacts groups are not shipped as static ToolKit metadata.
+- Documented macOS 27 AppKit/Apple Intelligence runtime intents such as `FetchIntelligenceCommands`, `InsertIntelligenceText`, `RunIntelligenceCommand`, and the expanded Writing Tools transforms with observed parameters and app/window-context caveats.
+- Documented and regression-tested `Set Appearance on Apple TV` (`com.apple.TVRemoteUIService.ToggleSystemAppearanceIntent`) with `appearanceToggle` enum values `light` / `dark` and boolean `ShowWhenRun`.
+- Documented private `AccessibilityUtilities.framework` intentdefinition evidence for Automators-reported `ToggleVehicleMotionCues`, `ToggleHearingAidMute`, and `SetSwitchControlProfile` / **Set Switch Control Switch Set** while keeping authoring gated to confirmed ToolKit identifiers or exported shortcut samples.
+- Added a regression guard that keeps those private Accessibility intent names out of the packaged ToolKit action catalogs, while confirming the shippable `Set Motion Cues`, `Set Switch Control`, and iOS Hearing App rows remain present.
+- Documented the linked OS 26.4 `Choose from List` behavior: dictionary and named-text inputs are valid again, while contact email/phone-number list values remain macOS-only.
+- Finished the linked Automators iOS 18 to OS 26.1 follow-up: documented Add Alarm `OpenWhenRun`, Create List `type`, Photos Open Person/Set Library View, macOS Background Sounds controls, Open App `WFWindowingFormat`, and left Search in Files marked unresolved pending an exported iOS shortcut because no literal row appears in local v78 ToolKit.
+- Enriched `toolkit-v78-first-party-parameter-keys.json` with localized parameter names, sort order, flags, and boolean labels while still omitting Apple descriptions.
+- Added targeted validation and documentation for Append to Note `operation`, limited to ToolKit values `append` and `prepend`.
+- Added targeted validation and documentation for `Add Item to List` position/index fields and `Choose from List` multi-select booleans.
+- Added validator and stress-suite coverage for Shortcuts' exact `WFMathOperation` encoding: addition omits the key, multiplication uses `×`, and division uses `÷`.
+- Updated the wiring regression suite to opt into all packaged platform snapshots so iOS-only HealthKit fixtures remain covered after target-platform gating.
+- Updated the random mixed-action stress suite signer to retry validator-clean XML after binary plist conversion, matching the production signing wrappers.
+- Added an explicit OS 27 random mixed-action stress mode (`--target-macos 27 --include-os27-actions`) that inserts Stored Content, Add Item to List, Otherwise If, Get Selected Text, Get What's On Screen, and Get Current VPN into every generated shortcut.
+- Added targeted validation and documentation for ToolKit v78 Get Distance unit/accuracy enums, Find VPNs library input source, and Quit App `WFAskToSaveChanges` boolean handling.
+- Added explicit regression coverage for Automators follow-up AppIntent enum/boolean values: Add Alarm, Create List, Set Library View, and Background Sounds controls.
+- Documented and validated platform-specific Safari/Photos AppIntent namespace splits: `com.apple.Safari.*` / `com.apple.Photos.*` on macOS and `com.apple.mobilesafari.*` / `com.apple.mobileslideshow.*` on iOS/iPadOS.
+- Removed a Codex/Claude drift in the random mixed-action stress suite output-dir fallback order.
+- Refreshed plugin README entry points so the OS 27 parameter and trigger catalogs are discoverable from the package overview.
+- Clarified `lookup_action_grounding.py --identifier` help so it explicitly covers automation trigger identifiers, and added regression coverage for trigger lookup by identifier as well as Python name.
+- Enriched the Automators OS 26 to 27 AppIntent notes with ToolKit enum/sort metadata for Messages, Photos, Mail, and Reminders rows while keeping entity-picker serialization sample-gated.
+- Added issue-regression coverage proving typoed AppIntent keys are rejected, valid AppIntent keys pass the schema check, iOS-only schemas stay platform-gated, lookup target-platform notes behave correctly, Stored Content wiring is checked, and legacy WF UI keys such as `ShowHeaders` are not false-positive failures.
+- Clarified signing failure guidance so each runtime reports the right unrestricted-shell or sandbox hint.
+
 ## Date: June 13, 2026 - Platform-aware OS 27 validation
 
 ### Summary
@@ -88,14 +136,27 @@ Added early macOS 27 validation support after inspecting the local Shortcuts Too
 
 ### Summary
 
-Released the public 1.1.0 package with fixes for Claude output-path configuration, HealthKit blood pressure labels, and Codex sandbox signing diagnostics.
+Released the public 1.1.0 package with fixes for HealthKit blood pressure labels and Codex sandbox signing diagnostics, plus mirrored Claude output-path configuration fixes in the repository package.
 
 ### Fixes Applied
 
-- Resolved Claude `${user_config.output_dir}` and `${user_config.signing_mode}` directly in builder/remixer agents, then passed explicit `--output-dir` and `--mode` flags to `sign-shortcut`.
 - Corrected HealthKit blood pressure labels to `Diastolic Blood Pressure` and `Systolic Blood Pressure`.
-- Added sandbox-specific guidance when Apple `shortcuts sign` reports the misleading "isn't in the correct format" error under Codex workspace sandboxing.
+- Added format-error signing guidance for Apple `shortcuts sign`, now including the binary plist retry before falling back to Codex workspace sandbox diagnosis.
 - Added focused issue-regression tests and HealthKit label assertions in the wiring regression suite.
+- Bumped the Codex plugin manifest to `1.1.0`.
+
+## Date: May 15, 2026 — Codex PostToolUse auto-validation hook
+
+### Summary
+
+Added a Codex-native `PostToolUse` hook for the Craig Loop now that Codex supports plugin-bundled hooks.
+
+### Fixes Applied
+
+- Added `codex/hooks/hooks.json` and `codex/hooks/auto-validate.sh`.
+- Declared the hook in `codex/.codex-plugin/plugin.json`.
+- The hook handles Codex `apply_patch` payloads by extracting changed files from the patch text, then validates `.xml`/`.shortcut` files containing `WFWorkflowActions`.
+- Updated Codex docs to note that plugin hooks require `[features].plugin_hooks = true` and hook review/trust via `/hooks` when prompted.
 
 ## Date: May 12, 2026 — Calendar date filters and Time Between Dates wiring
 

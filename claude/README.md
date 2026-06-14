@@ -14,13 +14,13 @@ Writing valid Shortcuts plists by hand — even with an LLM — is miserable. Th
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **Skill** | `skills/shortcuts-playground/` | The complete 12k-line Shortcuts knowledge base: action identifiers, wiring rules, 57 `BEST_PRACTICES.md` entries, golden example XMLs, ToolKit v63 and target-gated macOS/iOS 27 v78 ID snapshots, plus reviewed static Apple-derived macOS 27 grounding metadata. Claude loads it automatically when you ask for a shortcut. |
+| **Skill** | `skills/shortcuts-playground/` | The complete Shortcuts knowledge base: action identifiers, wiring rules, curated `BEST_PRACTICES.md` guidance, golden example XMLs, ToolKit v63 and target-gated macOS/iOS 27 v78 ID snapshots, plus reviewed static Apple-derived macOS 27 grounding, parameter-key, enum-case, and trigger metadata. Claude loads it automatically when you ask for a shortcut. |
 | **Build agent** | `agents/shortcut-builder.md` | `shortcut-builder` — specialized agent that owns the full design → build → validate → sign → archive loop for new shortcuts. |
 | **Remix agent** | `agents/shortcut-remixer.md` | `shortcut-remixer` — specialized agent that applies a surgical natural-language diff to an existing unsigned XML shortcut. Preserves UUIDs, icon, metadata, and every action the user didn't ask to touch. |
 | **Hook** | `hooks/hooks.json` + `hooks/auto-validate.sh` | `PostToolUse` hook that runs the Craig Loop validator on every `Write`/`Edit` producing a Shortcuts plist — applies to BOTH agents. Exit code 2 + stderr feeds validator output back into Claude's context so the model can iterate. |
 | **CLI** | `bin/validate-shortcut`, `bin/resolve-icon`, `bin/sign-shortcut`, `bin/shortcuts-playground-selftest` | Bare commands added to Claude's Bash `PATH` whenever the plugin is enabled. Work from any working directory. |
 | **Slash commands** | `commands/build.md`, `commands/remix.md` | `/shortcuts-playground:build <brief>` — create from scratch. `/shortcuts-playground:remix <path> <idea>` — diff an existing unsigned `.xml` file. |
-| **User config** | `plugin.json` → `userConfig` | `output_dir` (archive root), `signing_mode` (`anyone` or `people-who-know-me`), and `target_macos` (`auto`, `26`, `27`, or `latest`). See [Configuration](#configuration) for how to set these. |
+| **User config** | `plugin.json` → `userConfig` | `output_dir` (archive root), `signing_mode` (`anyone` or `people-who-know-me`), `target_macos` (`auto`, `26`, `27`, or `latest`), and `target_platform` (`macos`, `ios`, or `all`). See [Configuration](#configuration) for how to set these. |
 
 ## Requirements
 
@@ -230,7 +230,7 @@ shortcuts-playground-plugin/
 │       ├── ACTIONS.md
 │       ├── APPINTENTS.md
 │       ├── PARAMETER_TYPES.md
-│       ├── ...                  # 13 reference markdown files total
+│       ├── ...                  # reference markdown files
 │       ├── data/                # ToolKit ID snapshots + glyph/color JSON
 │       ├── golden-shortcuts/    # 19 curated example XMLs
 │       └── scripts/             # Python implementations

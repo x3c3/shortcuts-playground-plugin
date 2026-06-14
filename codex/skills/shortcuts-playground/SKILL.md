@@ -68,6 +68,8 @@ A shortcut is an XML plist that gets signed into a binary package. Generate the 
     </dict>
     <key>WFWorkflowImportQuestions</key>
     <array/>
+    <key>WFWorkflowInputContentItemClasses</key>
+    <array/>
     <key>WFWorkflowMinimumClientVersion</key>
     <integer>900</integer>
     <key>WFWorkflowMinimumClientVersionString</key>
@@ -154,7 +156,7 @@ Control flow actions (repeat, conditional, menu) use:
 | Text | `is.workflow.actions.gettext` | `WFTextActionText` |
 | Show Result | `is.workflow.actions.showresult` | `Text` |
 | Ask for Input | `is.workflow.actions.ask` | `WFAskActionPrompt`, `WFInputType` |
-| Use AI Model | `is.workflow.actions.askllm` | `WFLLMPrompt`, `WFLLMModel`, `WFGenerativeResultType`, `WFAllowWebSearch` (OS 27+) |
+| Use AI Model | `is.workflow.actions.askllm` | `WFLLMPrompt`, `WFLLMModel`, `WFGenerativeResultType`, `WFAllowWebSearch`, `FollowUp` (OS 27+) |
 | Comment | `is.workflow.actions.comment` | `WFCommentActionText` |
 | URL | `is.workflow.actions.url` | `WFURLActionURL` |
 | Get Contents of URL | `is.workflow.actions.downloadurl` | `WFURL`, `WFHTTPMethod` |
@@ -257,16 +259,17 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 - **Regenerating from scratch** when only 1-2 specific actions need fixing. Targeted edits preserve working wiring.
 
 ### Data sources
-The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target OS version and target platform, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default OS target is `auto` (`sw_vers` on macOS, macOS 26 when the host cannot be detected). The default platform target is `macos`. Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building OS 27-era shortcuts that need target-gated macOS v78 identifiers or OS 27-only parameters such as `WFAllowWebSearch`, `interpretAsMarkdown`, `WFAvoidTolls`, and Safari Tab Group `contents`. Use `--target-platform ios` / `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM=ios` only for iPhone/iPad authoring, and `--target-platform all` only for intentional cross-platform metadata audits. It does not read the user's live ToolKit SQLite database during normal validation.
+The validator uses bundled ToolKit snapshot IDs from packaged `data/toolkit-v*-tool-ids.json` files, filtered by target OS version and target platform, then augments with [`ACTIONS.md`](ACTIONS.md), [`APPINTENTS.md`](APPINTENTS.md), and [`THIRD_PARTY_ACTIONS.md`](THIRD_PARTY_ACTIONS.md). The default OS target is `auto` (`sw_vers` on macOS, macOS 26 when the host cannot be detected). The default platform target is `macos`. Use `--target-macos 27` or `SHORTCUTS_PLAYGROUND_TARGET_MACOS=27` only when building OS 27-era shortcuts that need target-gated macOS v78 identifiers or OS 27-only parameters such as `WFAllowWebSearch` / `FollowUp` on Use Model, `interpretAsMarkdown`, `WFAvoidTolls`, and Safari Tab Group `contents`. Use `--target-platform ios` / `SHORTCUTS_PLAYGROUND_TARGET_PLATFORM=ios` only for iPhone/iPad authoring, and `--target-platform all` only for intentional cross-platform metadata audits. For OS 27 targets, the validator also uses `data/toolkit-v78-first-party-parameter-keys.json` to reject unknown top-level keys on first-party `com.apple.*` AppIntent-style actions. It does not read the user's live ToolKit SQLite database during normal validation.
 
 For reviewed Apple-derived macOS 27 schema grounding and automation trigger metadata, use the static catalogs only:
 
 ```bash
 python3 "$SKILL_DIR/scripts/lookup_action_grounding.py" --identifier additemtolist --target-macos 27
 python3 "$SKILL_DIR/scripts/lookup_action_grounding.py" --python-name when_app_opened --target-macos 27
+python3 "$SKILL_DIR/scripts/lookup_action_grounding.py" --identifier com.apple.HearingApp.MuteVolumeIntent --target-macos 27 --target-platform ios
 ```
 
-`data/macos27-shortpy-grounding.json` may improve parameter/schema confidence, and `data/toolkit-v78-trigger-parameter-keys.json` may improve automation-trigger discovery, but neither overrides validator target gating. Trigger metadata is not import-ready automation support.
+`data/macos27-shortpy-grounding.json` may improve parameter/schema confidence, `data/toolkit-v78-first-party-enum-cases.json` may improve picker-value selection, and `data/toolkit-v78-trigger-parameter-keys.json` may improve automation-trigger discovery, but none of them overrides validator target gating. The lookup helper reports target-platform availability notes for iOS-only/macOS-only ToolKit rows. Trigger metadata is not import-ready automation support.
 
 ### Escape-hatch comments
 If a request explicitly requires vCard/VCF formatting or file-based token loading, add a Comment containing `ALLOW_VCARD` or `ALLOW_TOKEN_FILE` so the validator can allow it. Other escape hatches: `ALLOW_MANUAL_UNIT_CONVERSION`, `ALLOW_DATETIME_FORMAT`.
@@ -306,6 +309,14 @@ Optional:
 python3 "$SKILL_DIR/scripts/test_random_mixed_shortcuts.py" --count 50 --min-actions 10 --sign
 ```
 
+For OS 27 coverage, opt in explicitly so older users and CI jobs do not validate Golden Gate-only actions by accident:
+
+```bash
+python3 "$SKILL_DIR/scripts/test_random_mixed_shortcuts.py" --count 50 --min-actions 10 --target-macos 27 --include-os27-actions --sign
+```
+
+The OS 27 module adds Stored Content, Add Item to List, Otherwise If, Get Selected Text, Get What's On Screen, and Get Current VPN to every generated shortcut.
+
 Use this suite when you need randomized multi-action regression coverage beyond targeted wiring tests.
 
 ## Signing Shortcuts
@@ -327,14 +338,14 @@ shortcuts sign --mode anyone --input MyShortcut.shortcut --output MyShortcut.sho
 ```
 
 The signing process:
-1. Write your plist as XML to a `.shortcut` file (do not pre-convert with `plutil -convert binary1`).
-2. Run `scripts/sign_shortcut.sh` (or `shortcuts sign` directly) to add the cryptographic signature (~19KB added).
+1. Write your plist as XML to a `.shortcut` file by default.
+2. Run `scripts/sign_shortcut.sh` (or `shortcuts sign` directly) to add the cryptographic signature (~19KB added). The wrapper archives the XML, then retries a validator-clean format failure after binary plist conversion when Apple's XML signer chokes.
 3. Keep the signed output filename equal to the intended display name (no `_signed` suffix).
 4. The signed file can be opened/imported into Shortcuts.app.
 
 Signing gotchas:
 - If `shortcuts sign` reports `Error: The file doesn't exist.` but the file exists, copy the XML plist directly to a clean `.shortcut` path and retry (example: `cp source.xml /tmp/MyShortcut.shortcut`).
-- If `shortcuts sign` reports `Error: The file couldn't be opened because it isn't in the correct format.` while `validate_shortcut.py` and `plutil -lint` pass, suspect Codex `workspace-write` sandbox restrictions before blaming the XML. Retry signing outside the restricted sandbox or with Codex filesystem sandboxing set to full access.
+- If `shortcuts sign` reports `Error: The file couldn't be opened because it isn't in the correct format.` while `validate_shortcut.py` and `plutil -lint` pass, retry after `plutil -convert binary1` on the final `.shortcut` copy before blaming the plist. `scripts/sign_shortcut.sh` performs this retry automatically; if both attempts fail, suspect Codex `workspace-write` sandbox restrictions before treating the XML as malformed.
 - `ERROR: Unrecognized attribute string flag '?'` warnings are noisy but can be non-fatal if the output file is produced.
 - The `shortcuts` CLI supports `run`, `list`, `view`, and `sign`; do not assume `delete`, `rename`, or `import` subcommands.
 

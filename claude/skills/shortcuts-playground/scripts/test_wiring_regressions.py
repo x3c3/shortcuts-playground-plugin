@@ -2170,7 +2170,10 @@ def write_fixture(path: Path, plist: dict) -> None:
 
 def run_suite(cases: list[Case], fixture_dir: Optional[Path]) -> int:
     skill_dir = Path(__file__).resolve().parents[1]
-    allowed_ids = load_allowed_ids(skill_dir)
+    # This suite intentionally mixes macOS and iOS-only fixtures, including
+    # HealthKit. Use all packaged platform snapshots so target-platform gating
+    # does not hide the schemas this regression suite is meant to exercise.
+    allowed_ids = load_allowed_ids(skill_dir, target_platform=None)
     allowed_glyph_ids, allowed_icon_colors = load_icon_metadata(skill_dir)
 
     per_category: dict[str, dict[str, int]] = {}

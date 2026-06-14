@@ -49,7 +49,7 @@ Confirm the install worked:
 claude plugin list | grep shortcuts-playground
 ```
 
-You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.0  ✔ enabled`.
+You should see a line like `shortcuts-playground@shortcuts-playground  Version: 1.2.0  ✔ enabled`.
 
 ## Verify it works (strongly recommended)
 
@@ -161,13 +161,13 @@ Your `~/Documents/Shortcuts Playground/` directory stays intact — the plugin n
 
 **Signing fails with a "file doesn't exist" error** — a macOS `shortcuts sign` quirk. Try again; it usually retries successfully.
 
-**Signing fails with "isn't in the correct format" even though validation passes** — if `validate-shortcut` and `plutil -lint` both pass, the XML may be fine. This has been observed when Apple's `shortcuts sign` runs under Codex `workspace-write` sandbox restrictions. Retry from an unrestricted shell or with Codex filesystem sandboxing set to full access before treating the plist as malformed.
+**Signing fails with "isn't in the correct format" even though validation passes** — if `validate-shortcut` and `plutil -lint` both pass, the XML may be fine. Use `sign-shortcut`; it retries after binary plist conversion. If XML and binary signing both fail, retry from an unrestricted shell and check filesystem permissions before treating the plist as malformed.
 
 **Anything weirder than the above** — contact the maintainer with the failing command and the output. Include the session ID from `claude plugin list` if you can.
 
 ## What you're getting
 
-- **One skill** — the full Shortcuts knowledge base (~12,000 lines of reference material, 57 best-practice rules, verified action identifiers from Apple's ToolKit v63 plus target-gated macOS/iOS 27 ToolKit v78 coverage, 19 golden example XMLs). Claude auto-loads it when you ask for a shortcut.
+- **One skill** — the full Shortcuts knowledge base: curated best-practice rules, verified action identifiers from Apple's ToolKit v63 plus target-gated macOS/iOS 27 ToolKit v78 coverage, reviewed static OS 27 parameter/enum/trigger catalogs, and 19 golden example XMLs. Claude auto-loads it when you ask for a shortcut.
 - **Two agents** — `shortcut-builder` (new-from-scratch) and `shortcut-remixer` (diff an existing XML). Each is a specialist with its own system prompt and bounded research budget.
 - **One hook** — `PostToolUse` auto-validator that runs the Craig Loop validator on every Write/Edit that produces a Shortcuts plist. Catches structural errors before signing.
 - **Four bin commands** — `validate-shortcut`, `resolve-icon`, `sign-shortcut`, `shortcuts-playground-selftest`. All added to Claude's Bash PATH when the plugin is enabled; all also callable from your own terminal for manual debugging.
@@ -175,7 +175,11 @@ Your `~/Documents/Shortcuts Playground/` directory stays intact — the plugin n
 
 ## Release notes
 
-You're installing **v1.0**. The full CHANGELOG is in the repo. Big recent changes:
+You're installing **v1.2.0**. The full CHANGELOG is in the repo. Big recent changes:
+
+- **v1.2.0** — early, target-gated macOS/iOS 27 support with ToolKit v78 action snapshots, AppIntent parameter and enum validation, OS 27 trigger metadata for discovery, Stored Content/Add Item to List/Otherwise If/VPN/on-screen-context coverage, stronger random stress testing, and safer signing wrappers.
+
+- **v1.1.0** — issue-regression hardening across Claude and Codex, HealthKit label fixes, improved signing wrappers, and stronger validator guidance.
 
 - **v1.0** — public launch reset; HealthKit active-energy labels now use `Active Calories`.
 

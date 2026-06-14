@@ -29,7 +29,7 @@ python3 "$SKILL_DIR/scripts/validate_shortcut.py" /path/to/Shortcut.xml
 
 `sign_shortcut.sh` defaults to `SHORTCUTS_PLAYGROUND_OUTPUT_DIR` or `~/Documents/Shortcuts Playground`, and `SHORTCUTS_PLAYGROUND_SIGNING_MODE` or `anyone`.
 
-If `shortcuts sign` reports that a validator-clean plist "isn't in the correct format", retry outside Codex `workspace-write` sandbox restrictions before assuming the XML is malformed.
+If `shortcuts sign` reports that a validator-clean plist "isn't in the correct format", use the bundled signer wrapper or retry after binary plist conversion before assuming the XML is malformed. If XML and binary signing both fail, retry outside Codex `workspace-write` sandbox restrictions.
 
 ## Auto-Validation Hook
 
@@ -47,13 +47,14 @@ from the patch payload before running `scripts/validate_shortcut.py`.
 |------|-------------|
 | [`SKILL.md`](SKILL.md) | Skill definition with Codex workflow rules |
 | [`ACTIONS.md`](ACTIONS.md) | WF*Action identifiers and parameters |
-| [`APPINTENTS.md`](APPINTENTS.md) | AppIntent actions (macOS ToolKit v63 + backups, with v78 IDs allowlisted separately) |
+| [`APPINTENTS.md`](APPINTENTS.md) | AppIntent actions (ToolKit v63 base coverage plus target-gated v78 identifiers, parameters, enum values, and research notes) |
 | [`PARAMETER_TYPES.md`](PARAMETER_TYPES.md) | Parameter value types and serialization formats |
 | [`URL_SCHEMES.md`](URL_SCHEMES.md) | Apple-documented Shortcuts URL schemes and x-callback-url patterns |
 | [`JAVASCRIPT_WEBPAGE.md`](JAVASCRIPT_WEBPAGE.md) | Run JavaScript on Webpage runtime requirements |
 | [`DATE_TIME.md`](DATE_TIME.md) | UNIX timestamp, ISO 8601, RFC 2822, and custom date/time recipes |
 | [`VARIABLES.md`](VARIABLES.md) | Variable reference system |
 | [`CONTROL_FLOW.md`](CONTROL_FLOW.md) | Repeat, Conditional, Menu patterns |
+| [`AUTOMATION_TRIGGERS.md`](AUTOMATION_TRIGGERS.md) | OS 27 ToolKit automation trigger metadata for research/sample requests |
 | [`FILTERS.md`](FILTERS.md) | Content filters for Find/Filter actions |
 | [`HEALTHKIT.md`](HEALTHKIT.md) | iOS/iPadOS Health action schemas and bundled anonymized XML examples |
 | [`EXAMPLES.md`](EXAMPLES.md) | Complete working examples |
@@ -69,6 +70,9 @@ from the patch payload before running `scripts/validate_shortcut.py`.
 | `data/toolkit-v63-tool-ids.json` | Bundled ToolKit v63 action-ID allowlist |
 | `data/toolkit-v78-tool-ids.json` | Bundled macOS 27 ToolKit v78 action-ID allowlist, gated by validator target |
 | `data/toolkit-v78-ios27-tool-ids.json` | Bundled iOS 27 Simulator ToolKit v78 action-ID allowlist, gated by validator target |
+| `data/toolkit-v78-first-party-parameter-keys.json` | Target-gated OS 27 first-party parameter-key/name/type catalog for AppIntent schema checks |
+| `data/toolkit-v78-first-party-enum-cases.json` | Static OS 27 enum-case catalog for ToolKit action and trigger parameter type names |
+| `data/toolkit-v78-trigger-parameter-keys.json` | OS 27 ToolKit automation trigger IDs, Python names, parameter keys, and output types |
 | `data/macos27-shortpy-grounding.json` | Reviewed static Apple-derived grounding catalog for macOS 27 action schemas and Shortpy names |
 | `data/healthkit-ios26.2-reference.json` | HealthKit types, category values, workout types, and units |
 

@@ -21,6 +21,7 @@ __pycache__/
 # Ad-hoc test output
 /tmp-shortcuts/
 /.local-test-output/
+/hero-banners/
 
 # Local reverse-engineering/research helpers and notes.
 # Shippable plugin metadata lives under codex/ and claude/ instead.

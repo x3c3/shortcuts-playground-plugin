@@ -4,6 +4,48 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 ## Unreleased
 
+- Nothing yet.
+
+## [1.2.0] — 2026-06-14
+
+### Fixed - AppIntent parameter schema validation
+
+- Added target-gated validation against the packaged ToolKit v78 first-party parameter catalog for `com.apple.*` AppIntent-style actions.
+- Unknown top-level AppIntent parameter keys now fail validation on OS 27 targets when the active macOS/iOS platform schema is known.
+- Added `lookup_action_grounding.py --target-platform` so Apple-derived grounding lookups report iOS/macOS target-platform compatibility.
+- Added targeted validator support and documentation for OS 27 Stored Content actions (`Store Content`, `Get Stored Content`, `Delete Stored Content`), including binary-sign retry handling for the correct Apple-saved `WFTextTokenString` Store Content input shape.
+- Added targeted validator support and documentation for OS 27 `Get What's On Screen` scope and limit parameters.
+- Added targeted validator support and documentation for OS 27 VPN actions (`Find VPNs`, `Get Current VPN`, `Set VPN`) and Settings VPN AppIntent rows.
+- Added targeted validator support for Automators OS 27 parameter deltas: markdown/web/route booleans, Maps route modes, Scan QR or Barcode `imageFile`, Safari Tab Group `contents`, and Hide/Quit App modes.
+- Added the ToolKit v78 `Use Model` `FollowUp` toggle to the OS 27 target-gated parameter list and boolean validator.
+- Added targeted validator support and docs for linked OS 26.4 deltas visible in v78 metadata: New Reminder `WFUrgent`, Find Places `WFSearchSortOrder`, Battery Charge Limit `setUntilTomorrow`, and Set Multitasking Mode enum/boolean fields.
+- Documented the iOS/iPadOS 27-only `Start Workout` and `End Workout` ToolKit rows as target-platform-gated metadata pending exported samples.
+- Updated the Claude self-test to verify the packaged OS 27 trigger metadata catalog, and corrected the Claude README user-config overview to include `target_platform`.
+- Kept regular `is.workflow.actions.*` payloads out of the broad schema check to avoid false positives from legacy plist/UI state keys.
+- Added structural validation so first-party `com.apple.*` AppIntent actions must include an `AppIntentDescriptor` with an `AppIntentIdentifier`.
+- Added packaged enum-case metadata for ToolKit v78 action/trigger parameter types, exposed through `lookup_action_grounding.py` as `enumCases` / `enumTypes`.
+- Added target-gated validator checks for invalid simple literal enum values on first-party `com.apple.*` AppIntent parameters backed by a single ToolKit enum type.
+- Added target-gated validator checks for first-party `com.apple.*` AppIntent boolean parameters backed by ToolKit `bool` types, covering rows such as Set Motion Cues and Set Switch Control.
+- Redacted dynamic user-local picker cases from the packaged enum catalog so local Reminders list names and Contacts groups are not shipped as static ToolKit metadata.
+- Documented macOS 27 AppKit/Apple Intelligence runtime intents such as `FetchIntelligenceCommands`, `InsertIntelligenceText`, `RunIntelligenceCommand`, and the expanded Writing Tools transforms with observed parameters and app/window-context caveats.
+- Documented and regression-tested `Set Appearance on Apple TV` (`com.apple.TVRemoteUIService.ToggleSystemAppearanceIntent`) with `appearanceToggle` enum values `light` / `dark` and boolean `ShowWhenRun`.
+- Documented private `AccessibilityUtilities.framework` intentdefinition evidence for Automators-reported `ToggleVehicleMotionCues`, `ToggleHearingAidMute`, and `SetSwitchControlProfile` / **Set Switch Control Switch Set** while keeping authoring gated to confirmed ToolKit identifiers or exported shortcut samples.
+- Documented the linked OS 26.4 `Choose from List` behavior: dictionary and named-text inputs are valid again, while contact email/phone-number list values remain macOS-only.
+- Finished the linked Automators iOS 18 to OS 26.1 follow-up: documented Add Alarm `OpenWhenRun`, Create List `type`, Photos Open Person/Set Library View, macOS Background Sounds controls, Open App `WFWindowingFormat`, and left Search in Files marked unresolved pending an exported iOS shortcut because no literal row appears in local v78 ToolKit.
+- Enriched the packaged v78 first-party parameter catalog with localized names, sort order, flags, and boolean labels while still omitting Apple descriptions.
+- Added targeted validation and documentation for Append to Note `operation`, limited to ToolKit values `append` and `prepend`.
+- Added targeted validation and documentation for `Add Item to List` position/index fields and `Choose from List` multi-select booleans.
+- Added validator and stress-suite coverage for Shortcuts' exact `WFMathOperation` encoding: addition omits the key, multiplication uses `×`, and division uses `÷`.
+- Updated the wiring regression suite to opt into all packaged platform snapshots so iOS-only HealthKit fixtures remain covered after target-platform gating.
+- Updated the random mixed-action stress suite signer to retry validator-clean XML after binary plist conversion, matching the production signing wrappers.
+- Removed a Codex/Claude drift in the random mixed-action stress suite output-dir fallback order.
+- Refreshed plugin README entry points so the OS 27 parameter and trigger catalogs are discoverable from the package overview.
+- Added issue-regression coverage for AppIntent key typos, platform-gated parameter schemas, and legacy WF action compatibility.
+- Enriched the Automators OS 26 to 27 AppIntent notes with ToolKit enum/sort metadata for Messages, Photos, Mail, and Reminders rows while keeping entity-picker serialization sample-gated.
+- Added targeted validation/docs for ToolKit v78 Get Distance unit/accuracy enums, Find VPNs `Library` input source, and Quit App `WFAskToSaveChanges`.
+- Added explicit regression coverage for Automators follow-up AppIntent enum/boolean values: Add Alarm, Create List, Set Library View, and Background Sounds controls.
+- Clarified Claude signing failure guidance so Claude users get a runtime-neutral unrestricted-shell/filesystem-permission hint instead of a Codex-specific sandbox message.
+
 ### Fixed - Platform-aware OS 27 validation
 
 - Added target-platform filtering to the validator so iOS 27 Simulator-only AppIntents no longer validate for the default macOS target.
@@ -54,7 +96,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 
 - Fixed Claude Code custom output-path handling by resolving `${user_config.output_dir}` and `${user_config.signing_mode}` directly in the builder/remixer agents, then passing explicit `--output-dir` and `--mode` flags to `sign-shortcut`.
 - Corrected HealthKit blood pressure labels in both runtime packages so `BloodPressureDiastolic` maps to `Diastolic Blood Pressure` and `BloodPressureSystolic` maps to `Systolic Blood Pressure`, matching Shortcuts.app.
-- Confirmed the Codex workspace sandbox can make Apple `shortcuts sign` return a misleading "isn't in the correct format" error for validator-clean plists; the signing helpers and docs now surface the sandbox-specific diagnosis.
+- Confirmed Apple `shortcuts sign` can return a misleading "isn't in the correct format" error for validator-clean plists; signing helpers now retry after binary plist conversion before surfacing the sandbox-specific diagnosis.
 - Added focused issue-regression tests plus HealthKit label assertions in both wiring regression suites.
 
 ### Fixed — Send Message payload guidance
@@ -75,7 +117,11 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Updated HealthKit guidance, reference data, and validator regressions so Active Energy Burned uses the Shortcuts label `Active Calories`.
 - Rejected stale HealthKit labels such as `Active Energy` and `Active Energy Burned` in generated actions.
 
-## [1.7.5] — 2026-05-04
+## Legacy pre-public development history
+
+The entries below predate the May 2026 public launch reset and are kept for project archaeology. Their version numbers are not current public release numbers.
+
+## [legacy-1.7.5] — 2026-05-04
 
 ### Added — URL schemes, JavaScript webpage rules, and date recipes
 
@@ -84,7 +130,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Added Run JavaScript on Webpage guidance and validation for Safari share-sheet metadata, `completion(...)`, JSON-compatible output, and timeout-prone blocking dialog APIs.
 - Added Apple-aligned date/time recipe docs for UNIX timestamps, built-in date/time styles, ISO 8601, RFC 2822, and Unicode TR35 custom format strings.
 
-## [1.7.4] — 2026-04-30
+## [legacy-1.7.4] — 2026-04-30
 
 ### Fixed — Health dashboard labels and duration math
 
@@ -93,7 +139,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Added guidance and regression coverage for Sleep duration math: divide by `3600` for decimal hours, not `60`.
 - Documented safer Walking + Running Distance unit handling and validator coverage for the generated `Distance Total ÷ 1000` pattern.
 
-## [1.7.3] — 2026-04-28
+## [legacy-1.7.3] — 2026-04-28
 
 ### Fixed — Find Health Samples Type picker
 
@@ -101,13 +147,13 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Rejected the broken `Property = Value` / `Values.String = Step Count` shape that imports as an editable text filter instead of the Health type picker.
 - Updated Claude Code and Codex docs, validators, generated reference metadata, and regression fixtures; `Step Count` now maps to `Steps` for Find Health Samples.
 
-## [1.7.2] — 2026-04-28
+## [legacy-1.7.2] — 2026-04-28
 
 ### Fixed — Find Health Samples Value field
 
 - Superseded by 1.7.3. This release incorrectly changed Find Health Samples sample-kind filters to `Property = Value`, which imported as an editable text filter.
 
-## [1.7.1] — 2026-04-27
+## [legacy-1.7.1] — 2026-04-27
 
 ### Fixed — Find Health Samples Type filter
 
@@ -115,7 +161,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Updated HealthKit docs and validator rules to require the Health sample kind inside `WFContentItemFilter`; 1.7.3 later corrected the value state to the locked `Type` enumeration shape.
 - Added regression coverage for missing and unknown Health sample-kind filters.
 
-## [1.7.0] — 2026-04-26
+## [legacy-1.7.0] — 2026-04-26
 
 ### Added — Codex package and dual-runtime repository layout
 
@@ -124,7 +170,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Updated the root Claude marketplace to install from `./claude`.
 - Added a root Codex marketplace at `.agents/plugins/marketplace.json` that points to `./codex`.
 
-## [1.6.1] — 2026-04-26
+## [legacy-1.6.1] — 2026-04-26
 
 ### Fixed — remove personal local evidence details from distributed references
 
@@ -133,7 +179,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - Sanitized bundled golden XML examples that contained personal attribution or sample contact names.
 - Kept generic placeholder paths such as `/Users/you/...` where docs need to demonstrate absolute path syntax.
 
-## [1.6.0] — 2026-04-26
+## [legacy-1.6.0] — 2026-04-26
 
 ### Added — HealthKit action support
 
@@ -147,7 +193,7 @@ All notable changes to the Shortcuts Playground plugin are documented in this fi
 - `scripts/test_wiring_regressions.py` — HealthKit 527/527, location 40/40, set-name 12/12, weather 40/40.
 - `bin/shortcuts-playground-selftest` — all checks passed, including the new HealthKit data file.
 
-## [1.5.3] — 2026-04-20
+## [legacy-1.5.3] — 2026-04-20
 
 ### Fixed — validator false positives surfaced by external audit
 
@@ -178,7 +224,7 @@ Added a "Platform Availability" section at the top of `skills/shortcuts-playgrou
 
 Four remaining items from the audit were intentionally deferred rather than patched blind, because each needs a concrete failing shortcut to avoid over-correcting. Tracked for a follow-up: (a) `documentpicker.save` with empty `WFFileDestinationPath`; (b) Adjust Date with `CurrentDate` token attachments flagged as empty; (c) SP-028 comment-scanner false positive; (d) import-schema drift across Open App, multi-condition If, Translate Text, Find Photos Album, and Get Weather Detail. Open a repro before touching any of these.
 
-## [1.5.2] — 2026-04-14
+## [legacy-1.5.2] — 2026-04-14
 
 ### Added — marketplace packaging
 
@@ -188,7 +234,7 @@ Four remaining items from the audit were intentionally deferred rather than patc
 ### Unchanged since v1.5.1
 - Agent prompts, validator logic, hook behavior, bin wrappers, skill content — all v1.5.1 as verified.
 
-## [1.5.1] — 2026-04-14
+## [legacy-1.5.1] — 2026-04-14
 
 ### Fixed — placeholder UUID generation (the known issue from v1.5.0)
 
@@ -220,7 +266,7 @@ Both agents were producing sequential-placeholder UUIDs (`11111111-1111-1111-111
 - **End-to-end remix test (B2):** `/shortcuts-playground:remix` on the B1 output, adding a second Show Notification. Result: all 4 original UUIDs preserved verbatim, exactly 1 new `uuidgen` UUID added for the new notification (`1D11A550-7EE1-446A-B2C1-91E35AE563A8`), icon preserved, `WFWorkflowName` renamed to "UUID Check Plus" as requested.
 - **Legacy migration test (B3):** `/shortcuts-playground:remix` on `Rescheduler V14.xml` — a pre-v1.5.1 source containing 10 placeholder UUIDs (`11111111-…` through `AAAAAAAA-…`). Result: the remixer detected all 10 placeholders during step 6's audit, minted 11 replacement UUIDs via `uuidgen` (10 migrations + 1 new notification), applied the remap table across `UUID`, `OutputUUID`, and `GroupingIdentifier` occurrences consistently, and produced a clean signed output. Migrated draft has **zero** placeholder UUIDs (grep confirmed), **11 total** UUIDs (10 migrated source + 1 new), validator passed, `AEA1` magic confirmed on the signed file.
 
-## [1.5.0] — 2026-04-14
+## [legacy-1.5.0] — 2026-04-14
 
 ### Added — Remix workflow (new command + new agent)
 
@@ -305,7 +351,7 @@ Same env-var pattern as `/build`. Pair with an "end your message with `SIGNED: <
 
 - **Placeholder UUIDs.** Both `shortcut-builder` and `shortcut-remixer` are producing sequential-placeholder UUIDs (`11111111-1111-1111-1111-111111111111`, `22222222-…`, etc.) instead of `uuidgen`-random values. This was already present in the v1.4.0 `Rescheduler V14.xml` build output — the remixer in this release just preserved the existing pattern. Functionally valid (unique within each file, correct format, uppercase), but not ideal for long-term uniqueness across multiple shortcuts in the same library. Fix will land as a follow-up patch by tightening the UUID-generation rule in both agent system prompts to require `uuidgen` output rather than placeholder sequences.
 
-## [1.4.1] — 2026-04-14
+## [legacy-1.4.1] — 2026-04-14
 
 ### Added (docs-only patch, verified against a second Apple-built sample)
 
@@ -316,7 +362,7 @@ An exported shortcut sample provided coverage for the `Is Completed` filter in b
 
 No code, validator, agent, or command changes in this patch — it's pure documentation closing the gap that the v1.4.0 Rescheduler build exposed (the agent correctly refused to guess a Boolean filter schema for Is Completed because it wasn't documented).
 
-## [1.4.0] — 2026-04-14
+## [legacy-1.4.0] — 2026-04-14
 
 ### Fixed — all the blockers surfaced by session 5174fcb1
 
@@ -366,7 +412,7 @@ A second sample shortcut (`Reminder Edits.xml`) exercises `filter.reminders` wit
 - `PostToolUse` auto-validate hook fires on every Write that produces a Shortcuts plist; verified via an ephemeral trace log in a fresh headless session (trace removed before commit).
 - The Rescheduler prompt from session 5174fcb1 — re-run on v1.4.0 — [see test matrix below].
 
-## [1.3.0] — 2026-04-13
+## [legacy-1.3.0] — 2026-04-13
 
 ### Fixed (factually wrong conditional documentation)
 
@@ -399,7 +445,7 @@ The previous condition code documentation had multiple errors that propagated in
 - `shortcuts-playground-selftest` still passes all six sub-checks.
 - Hello World regression still produces a signed `.shortcut`.
 
-## [1.2.0] — 2026-04-13
+## [legacy-1.2.0] — 2026-04-13
 
 ### Fixed (important behavior)
 - **Agent reconnaissance failure mode.** The `shortcut-builder` agent could go into unbounded exploration when an action identifier was allowlisted but lacked a documented parameter schema — it would query the user's local `~/Library/Shortcuts/Shortcuts.sqlite`, the ToolKit database, Google Drive backups, and system binaries looking for examples. Reproduced with the prompt *"Build a shortcut that gets my reminders due today and lets me select multiple ones to reschedule them"* against `is.workflow.actions.setters.reminders`. The agent now stops and escalates to the user with three clean options (best-effort guess, simpler alternative, user-provided example) and never touches local databases during authoring.
@@ -428,7 +474,7 @@ The previous condition code documentation had multiple errors that propagated in
 - Hello World regression produces signed `.shortcut`.
 - The exact failing reminders prompt now triggers the escalation path: the agent stops, presents three options, makes zero tool calls to Shortcuts.sqlite / ToolKit / Google Drive / system paths.
 
-## [1.1.0] — 2026-04-13
+## [legacy-1.1.0] — 2026-04-13
 
 ### Added
 - `bin/shortcuts-playground-selftest` — post-install smoke test that verifies Python 3.10+, the macOS `shortcuts` CLI, plugin root resolution, bundled data files, a validator pass on an embedded golden XML, and a full `sign-shortcut` archive + sign round trip to a temp dir. Exits with specific error messages on any failure. Supports `SHORTCUTS_PLAYGROUND_SELFTEST_SKIP_SIGN=1` for CI environments without the `shortcuts` CLI.
@@ -450,7 +496,7 @@ The previous condition code documentation had multiple errors that propagated in
   - T7: validator hook blocks a write with an unknown action identifier in headless mode.
   - T8: re-validation of every archive XML produced in the matrix — all pass.
 
-## [1.0.0] — 2026-04-13
+## [legacy-1.0.0] — 2026-04-13
 
 ### Added
 - Initial plugin conversion from the standalone `generate-shortcuts-skill` Claude Code skill.
